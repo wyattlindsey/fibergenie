@@ -4,7 +4,9 @@
   "description": "fibergenie Node server",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "nodemon server.js --exec babel-node",
+    "start:dev": "nodemon server.js --exec babel-node",
+    "start:prod": "node server.js --exec babel-node"
   },
   "repository": {
     "type": "git",
@@ -18,5 +20,11 @@
   "homepage": "https://github.com/wyattlindsey/fibergenie#readme",
   "dependencies": {
     "express": "^4.16.3"
+  },
+  "devDependencies": {
+    "babel-cli": "^6.26.0",
+    "babel-core": "^6.26.3",
+    "babel-preset-env": "^1.7.0",
+    "nodemon": "^1.17.5"
   }
 }
