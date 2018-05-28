@@ -1,5 +1,5 @@
-import CannyEdgeDetector from 'canny-edge-detector'
-import Image from 'image'
+import cannyEdgeDetector from 'canny-edge-detector'
+import Image from 'image-js'
 
 import dotProp from 'dot-prop'
 
@@ -12,9 +12,14 @@ const upload = async (req, res) => {
     status = 500
   } else {
     try {
-      const loadedImage = await Jimp.read(imagePath)
-      const grey = loadedImage.greyscale()// write(`public/uploads/${fileName}-greyscale.jpg`)
-      const edge = CannyEdgeDetector(loadedImage)
+      const img = await Image.load(imagePath)
+      const grey = img.grey()
+      const edge = cannyEdgeDetector(grey, {
+        gaussianBlur: 0.4,
+        highThreshold: 80,
+        lowThreshold: 10,
+      })
+      edge.save(`public/uploads/${fileName}-edge.jpg`)
     } catch (e) {
       console.error('Image processing failed', e)
       status = 500
