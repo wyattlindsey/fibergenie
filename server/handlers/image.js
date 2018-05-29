@@ -23,36 +23,18 @@ const upload = async (req, res) => {
   const upscaledImage = await upscaleImage(img)
   await upscaledImage.save(`${baseDirectoryPath}/upscaled-3x.jpg`)
 
-  processImage(baseDirectoryPath, 'upscaled-3x.jpg')
+  const processedImage = processImage(baseDirectoryPath, 'upscaled-3x.jpg')
+  const chartLines = extractChartLines(processedImage)
+  const withLines = processedImage.toColor()
 
-  // const img = new dv.Image('jpg', fs.readFileSync(`${imagePath}-prepped.jpg`))
-  // const gray = img.toGray()
-  // const lines = gray.lineSegments(3, 0, true)
-  // const correctLines = lines.filter(line => line.error === 0)
-  //
-  // lines.forEach(line => {
-  //   img.drawLine(line.p1, line.p2, 2, 25, 50, 240)
-  // })
-  //
-  // fs.writeFileSync(`public/uploads/${fileName}-lines.jpg`, img.toBuffer('jpg'))
+  chartLines.forEach(line => {
+    withLines.drawLine(line.p1, line.p2, 2, 255, 0, 0)
+  })
 
-  // if (!filePath) {
-  //   status = 500
-  // } else {
-  // try {
-  //   const img = await Image.load(imagePath)
-  //   const grey = img.grey()
-  //   const edge = cannyEdgeDetector(grey, {
-  //     gaussianBlur: 0.4,
-  //     highThreshold: 80,
-  //     lowThreshold: 10,
-  //   })
-  //   edge.save(`public/uploads/${fileName}-edge.jpg`)
-  // } catch (e) {
-  //   console.error('Image processing failed', e)
-  //   status = 500
-  // }
-  // }
+  fs.writeFileSync(
+    `${baseDirectoryPath}/with-lines.jpg`,
+    withLines.toBuffer('jpg')
+  )
 
   fs.unlinkSync(tmpFilePath)
 
@@ -65,10 +47,20 @@ const upscaleImage = async img => {
 
 const processImage = (dir, fileName) => {
   const img = new dv.Image('jpg', fs.readFileSync(`${dir}/${fileName}`))
-  // todo img.findSkew() -- needs a monochrome image
   const gray = img.toGray('max')
-  const monochrome = gray.threshold(210)
+  const monochrome = gray.threshold(210).invert().thin('bg', 8, 0)
+  // todo img.findSkew()
   fs.writeFileSync(`${dir}/processed.jpg`, monochrome.toBuffer('jpg'))
+  return monochrome
+}
+
+const extractChartLines = img => {
+  const lines = img.toGray().lineSegments(6, 0, false)
+  const correctLines = lines.filter(line => line.error === 0)
+
+  console.log(lines.length)
+
+  return lines
 }
 
 export default {
