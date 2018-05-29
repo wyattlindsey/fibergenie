@@ -24,10 +24,14 @@ const upload = async (req, res) => {
   await upscaledImage.save(`${baseDirectoryPath}/upscaled-3x.jpg`)
 
   const processedImage = processImage(baseDirectoryPath, 'upscaled-3x.jpg')
-  const chartLines = extractChartLines(processedImage)
+  const { horizontalLines, verticalLines } = extractChartLines(processedImage)
   const withLines = processedImage.toColor()
 
-  chartLines.forEach(line => {
+  horizontalLines.forEach(line => {
+    withLines.drawLine(line.p1, line.p2, 2, 255, 0, 0)
+  })
+
+  verticalLines.forEach(line => {
     withLines.drawLine(line.p1, line.p2, 2, 255, 0, 0)
   })
 
@@ -48,19 +52,134 @@ const upscaleImage = async img => {
 const processImage = (dir, fileName) => {
   const img = new dv.Image('jpg', fs.readFileSync(`${dir}/${fileName}`))
   const gray = img.toGray('max')
-  const monochrome = gray.threshold(210).invert().thin('bg', 8, 0)
+  const monochrome = gray
+    .threshold(210)
+    .invert()
+    .thin('bg', 8, 0)
   // todo img.findSkew()
   fs.writeFileSync(`${dir}/processed.jpg`, monochrome.toBuffer('jpg'))
   return monochrome
 }
 
 const extractChartLines = img => {
-  const lines = img.toGray().lineSegments(6, 0, false)
-  const correctLines = lines.filter(line => line.error === 0)
+  const lineSegments = img.toGray().lineSegments(6, 0, false)
 
-  console.log(lines.length)
+  const mappedHorizontalSegments = {}
+  const mappedVerticalSegments = {}
+  const horizontalSegments = []
+  const verticalSegments = []
+  const maxDeviation = 2
+  const minLength = 10
 
-  return lines
+  // sort into horizontal and vertical segments
+  lineSegments.forEach(seg => {
+    const xDist = Math.abs(seg.p1.x - seg.p2.x)
+    const yDist = Math.abs(seg.p1.y - seg.p2.y)
+
+    if (xDist >= minLength && yDist <= maxDeviation) {
+      horizontalSegments.push(seg)
+    } else if (yDist >= minLength && xDist <= maxDeviation) {
+      verticalSegments.push(seg)
+    }
+  })
+
+  // group all co-linear segments by common coord
+  horizontalSegments.forEach(seg => {
+    const xCoord = seg.p1.x
+    const yCoord = seg.p1.y
+
+    const colinearSegmentsForYCoord = dotProp.get(
+      mappedHorizontalSegments,
+      `${yCoord}`,
+      {
+        minX: xCoord,
+        maxX: xCoord,
+        segments: [],
+      }
+    )
+
+    const minX = Math.min(xCoord, colinearSegmentsForYCoord.minX)
+    const maxX = Math.max(xCoord, colinearSegmentsForYCoord.maxX)
+
+    mappedHorizontalSegments[yCoord] = {
+      minX,
+      maxX,
+      segments: [...colinearSegmentsForYCoord.segments, seg],
+    }
+  })
+
+  verticalSegments.forEach(seg => {
+    const xCoord = seg.p1.x
+    const yCoord = seg.p2.y
+
+    const colinearSegmentsForXCoord = dotProp.get(
+      mappedVerticalSegments,
+      `${xCoord}`,
+      {
+        minY: yCoord,
+        maxY: yCoord,
+        segments: [],
+      }
+    )
+
+    const minY = Math.min(yCoord, colinearSegmentsForXCoord.minY)
+
+    const maxY = Math.max(yCoord, colinearSegmentsForXCoord.maxY)
+
+    mappedVerticalSegments[xCoord] = {
+      minY,
+      maxY,
+      segments: [...colinearSegmentsForXCoord.segments, seg],
+    }
+  })
+
+  // get the max stretch in horizontal and vertical directions
+  let minX
+  let maxX
+  Object.keys(mappedHorizontalSegments).forEach(key => {
+    const xCoord = Number.parseInt(key)
+    minX = minX ? Math.min(xCoord, minX) : xCoord
+    maxX = maxX ? Math.max(xCoord, maxX) : xCoord
+  })
+
+  let minY
+  let maxY
+  Object.keys(mappedVerticalSegments).forEach(key => {
+    const yCoord = Number.parseInt(key)
+    minY = minY ? Math.min(yCoord, minY) : yCoord
+    maxY = maxY ? Math.max(yCoord, maxY) : yCoord
+  })
+
+  // find only the co-linear segments with an appreciable number of segments
+  const groupedHorizontalSegments = []
+  const groupedVerticalSegments = []
+
+  Object.keys(mappedHorizontalSegments).forEach(key => {
+    const v = mappedHorizontalSegments[key]
+
+    if (v.segments.length > 5) {
+      groupedHorizontalSegments.push({
+        p1: { x: minX, y: v.segments[0].p1.y },
+        p2: { x: maxX, y: v.segments[0].p1.y },
+      })
+    }
+  })
+
+  Object.keys(mappedVerticalSegments).forEach(key => {
+    const v = mappedVerticalSegments[key]
+
+    if (v.segments.length > 5) {
+      groupedVerticalSegments.push({
+        p1: { x: v.segments[0].p1.x, y: minY },
+        p2: { x: v.segments[0].p1.x, y: maxY },
+      })
+    }
+  })
+
+  return {
+    horizontalLines: groupedHorizontalSegments,
+    verticalLines: groupedVerticalSegments,
+  }
 }
 
 export default {
