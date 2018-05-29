@@ -1,7 +1,7 @@
 import handlers from './handlers'
 
 const multer = require('multer')
-const upload = multer({ dest: '/public/uploads' })
+const upload = multer({ dest: 'public/uploads/tmp' })
 
 const routes = app => {
   app.get('/', (req, res) => {
