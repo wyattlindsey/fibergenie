@@ -3,7 +3,7 @@ import dv from 'ndv'
 import gm from 'gm'
 import fs from 'fs'
 
-const TARGET_IMAGE_WIDTH = 2048
+const TARGET_IMAGE_DIMS = 2048
 const UPLOADS_FOLDER = 'public/uploads'
 
 const upload = async (req, res) => {
@@ -83,10 +83,10 @@ const saveOriginal = (sourcePath, baseDir) => {
 const resizeImage = (sourcePath, baseDir) => {
   return new Promise(resolve => {
     gm(sourcePath)
-      .resize(TARGET_IMAGE_WIDTH)
-      .write(`${baseDir}/resized-${TARGET_IMAGE_WIDTH}.jpg`, err => {
+      .resize(TARGET_IMAGE_DIMS, TARGET_IMAGE_DIMS)
+      .write(`${baseDir}/resized-${TARGET_IMAGE_DIMS}.jpg`, err => {
         if (!err) {
-          resolve(`${baseDir}/resized-${TARGET_IMAGE_WIDTH}.jpg`)
+          resolve(`${baseDir}/resized-${TARGET_IMAGE_DIMS}.jpg`)
         } else {
           throw 'Error resizing image'
         }
@@ -96,8 +96,8 @@ const resizeImage = (sourcePath, baseDir) => {
   })
 }
 
-const processImage = (sourcePath, basePath) => {
-  try {
+const processImage = async (sourcePath, basePath) => {
+  return new Promise(resolve => {
     // use some filters from GraphicsMagick
     gm(sourcePath)
       .despeckle()
@@ -106,7 +106,10 @@ const processImage = (sourcePath, basePath) => {
           throw 'Error saving intermediate file'
         } else {
           // use some filters from DocumentVision
-          const img = new dv.Image('jpg', fs.readFileSync(sourcePath))
+          const img = new dv.Image(
+            'jpg',
+            fs.readFileSync(`${basePath}/processed.jpg`)
+          )
           const gray = img.toGray('max')
           const monochrome = gray
             .threshold(210)
@@ -115,15 +118,15 @@ const processImage = (sourcePath, basePath) => {
 
           // todo img.findSkew()
           fs.writeFileSync(
-            `${basePath}/processed-new.jpg`,
+            `${basePath}/processed.jpg`,
             monochrome.toBuffer('jpg')
           )
-          return `${basePath}/processed.jpg`
+          resolve(`${basePath}/processed.jpg`)
         }
       })
-  } catch (e) {
+  }).catch(e => {
     console.error('Error processing image: ', e)
-  }
+  })
 }
 
 const extractChartLines = sourcePath => {
@@ -159,10 +162,7 @@ const extractChartLines = sourcePath => {
       []
     )
 
-    mappedHorizontalSegments[yCoord] = [
-      ...colinearSegmentsForYCoord.segments,
-      seg,
-    ]
+    mappedHorizontalSegments[yCoord] = [...colinearSegmentsForYCoord, seg]
   })
 
   // make a collection of horizontal lines by filtering out just those with a lot of co-linear segments
