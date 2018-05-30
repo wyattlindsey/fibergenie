@@ -3,6 +3,7 @@ import Image from 'image-js'
 
 import dotProp from 'dot-prop'
 import dv from 'ndv'
+import gm from 'gm'
 import fs from 'fs'
 
 const MIN_IMAGE_WIDTH = 2048
@@ -14,51 +15,115 @@ const upload = async (req, res) => {
   const tmpFileName = dotProp.get(req, 'file.filename')
   const baseDirectoryPath = `${UPLOADS_FOLDER}/${tmpFileName}`
 
-  const img = await Image.load(tmpFilePath)
+  try {
+    // initialize folder and save original
+    fs.mkdirSync(baseDirectoryPath)
+    const originalImagePath = await saveOriginal(tmpFilePath, baseDirectoryPath)
 
-  fs.mkdirSync(baseDirectoryPath)
+    // save upscaled image to base directory
+    const upscaledImagePath = await upscaleImage(
+      originalImagePath,
+      baseDirectoryPath
+    )
 
-  await img.save(`${baseDirectoryPath}/original.jpg`)
+    // prepare for edge detection
+    const processedImagePath = await processImage(
+      upscaledImagePath,
+      baseDirectoryPath
+    )
+  } catch (e) {
+    console.error(e)
+    status = 500
+  }
 
-  const upscaledImage = await upscaleImage(img)
-  await upscaledImage.save(`${baseDirectoryPath}/upscaled-3x.jpg`)
+  // await img.save(`${baseDirectoryPath}/original.jpg`)
 
-  const processedImage = processImage(baseDirectoryPath, 'upscaled-3x.jpg')
-  const { horizontalLines, verticalLines } = extractChartLines(processedImage)
-  const withLines = processedImage.toColor()
+  // const upscaledImage = await upscaleImage(img)
+  // await upscaledImage.save(`${baseDirectoryPath}/upscaled-3x.jpg`)
+  //
+  // const processedImage = processImage(baseDirectoryPath, 'upscaled-3x.jpg')
+  // const { horizontalLines, verticalLines } = extractChartLines(processedImage)
+  // const withLines = processedImage.toColor()
+  //
+  // horizontalLines.forEach(line => {
+  //   withLines.drawLine(line.p1, line.p2, 2, 255, 0, 0)
+  // })
+  //
+  // verticalLines.forEach(line => {
+  //   withLines.drawLine(line.p1, line.p2, 2, 255, 0, 0)
+  // })
+  //
+  // fs.writeFileSync(
+  //   `${baseDirectoryPath}/with-lines.jpg`,
+  //   withLines.toBuffer('jpg')
+  // )
+  //
 
-  horizontalLines.forEach(line => {
-    withLines.drawLine(line.p1, line.p2, 2, 255, 0, 0)
-  })
-
-  verticalLines.forEach(line => {
-    withLines.drawLine(line.p1, line.p2, 2, 255, 0, 0)
-  })
-
-  fs.writeFileSync(
-    `${baseDirectoryPath}/with-lines.jpg`,
-    withLines.toBuffer('jpg')
-  )
-
+  // delete temp file
   fs.unlinkSync(tmpFilePath)
 
   res.sendStatus(status)
 }
 
-const upscaleImage = async img => {
-  return img.width >= MIN_IMAGE_WIDTH ? img : img.resize({ factor: 3 })
+const saveOriginal = (sourcePath, baseDir) => {
+  return new Promise(resolve => {
+    gm(sourcePath).write(`${baseDir}/original.jpg`, err => {
+      if (!err) {
+        resolve(`${baseDir}/original.jpg`)
+      } else {
+        throw 'Error saving original image'
+      }
+    })
+  }).catch(err => {
+    console.error(err)
+  })
 }
 
-const processImage = (dir, fileName) => {
-  const img = new dv.Image('jpg', fs.readFileSync(`${dir}/${fileName}`))
-  const gray = img.toGray('max')
-  const monochrome = gray
-    .threshold(210)
-    .invert()
-    .thin('bg', 8, 0)
-  // todo img.findSkew()
-  fs.writeFileSync(`${dir}/processed.jpg`, monochrome.toBuffer('jpg'))
-  return monochrome
+const upscaleImage = (sourcePath, baseDir) => {
+  console.log(sourcePath, baseDir)
+  return new Promise(resolve => {
+    gm(sourcePath)
+      .magnify(3)
+      .write(`${baseDir}/upscaled-3x.jpg`, err => {
+        if (!err) {
+          resolve(`${baseDir}/upscaled-3x.jpg`)
+        } else {
+          throw 'Error upscaling image'
+        }
+      })
+  }).catch(err => {
+    console.error(err)
+  })
+}
+
+const processImage = (sourcePath, basePath) => {
+  try {
+    // use some filters from GraphicsMagick
+    gm(sourcePath)
+      .despeckle()
+      .write(`${basePath}/processed.jpg`, err => {
+        if (err) {
+          throw 'Error saving intermediate file'
+        } else {
+          // use some filters from DocumentVision
+          const img = new dv.Image('jpg', fs.readFileSync(sourcePath))
+          const gray = img.toGray('max')
+          const monochrome = gray
+            .threshold(210)
+            .invert()
+            .thin('bg', 8, 0)
+
+          // todo img.findSkew()
+          fs.writeFileSync(
+            `${basePath}/processed-new.jpg`,
+            monochrome.toBuffer('jpg')
+          )
+          return `${basePath}/processed.jpg`
+        }
+      })
+  } catch (e) {
+    console.error('Error processing image: ', e)
+  }
 }
 
 const extractChartLines = img => {
@@ -133,52 +198,65 @@ const extractChartLines = img => {
     }
   })
 
-  // get the max stretch in horizontal and vertical directions
-  let minX
-  let maxX
-  Object.keys(mappedHorizontalSegments).forEach(key => {
-    const xCoord = Number.parseInt(key)
-    minX = minX ? Math.min(xCoord, minX) : xCoord
-    maxX = maxX ? Math.max(xCoord, maxX) : xCoord
-  })
+  // get the mean stretch in horizontal and vertical directions
+  // todo instead get the most common, with a small tolerance
+  // const horizontalSegmentStartMap = {}
+  // const horizontalSegmentEndMap = {}
+  // // todo reduce to most common min and max X for horizontal and most common min and max Y for vertical
+  // Object.keys(mappedHorizontalSegments).forEach(key => {
+  //   const xCoord = Number.parseInt(key)
+  //   const horizontalSegmentsForX = mappedHorizontalSegments[key]
+  //
+  //   const startCount = dotProp.get(horizontalSegmentStartMap, key, 0)
+  //   dotProp.set(horizontalSegmentStartMap, xCoord, startCount + 1)
+  //
+  //   const endCount = dotProp.get(horizontalSegmentEndMap, key, 0)
+  //   dotProp.set(
+  //     horizontalSegmentEndMap,
+  //     horizontalSegmentsForX.maxX,
+  //     endCount + 1
+  //   )
+  // })
+  //
+  // let minY
+  // let maxY
+  // Object.keys(mappedVerticalSegments).forEach(key => {
+  //   const yCoord = Number.parseInt(key)
+  //   minY = minY ? Math.min(yCoord, minY) : yCoord
+  //   maxY = maxY ? Math.max(yCoord, maxY) : yCoord
+  // })
+  //
+  // // find only the co-linear segments with an appreciable number of segments
+  // const groupedHorizontalSegments = []
+  // const groupedVerticalSegments = []
+  //
+  // Object.keys(mappedHorizontalSegments).forEach(key => {
+  //   const v = mappedHorizontalSegments[key]
+  //
+  //   if (v.segments.length > 5) {
+  //     groupedHorizontalSegments.push({
+  //       p1: { x: minX, y: v.segments[0].p1.y },
+  //       p2: { x: maxX, y: v.segments[0].p1.y },
+  //     })
+  //   }
+  // })
+  //
+  // Object.keys(mappedVerticalSegments).forEach(key => {
+  //   const v = mappedVerticalSegments[key]
+  //
+  //   if (v.segments.length > 5) {
+  //     groupedVerticalSegments.push({
+  //       p1: { x: v.segments[0].p1.x, y: minY },
+  //       p2: { x: v.segments[0].p1.x, y: maxY },
+  //     })
+  //   }
+  // })
 
-  let minY
-  let maxY
-  Object.keys(mappedVerticalSegments).forEach(key => {
-    const yCoord = Number.parseInt(key)
-    minY = minY ? Math.min(yCoord, minY) : yCoord
-    maxY = maxY ? Math.max(yCoord, maxY) : yCoord
-  })
-
-  // find only the co-linear segments with an appreciable number of segments
-  const groupedHorizontalSegments = []
-  const groupedVerticalSegments = []
-
-  Object.keys(mappedHorizontalSegments).forEach(key => {
-    const v = mappedHorizontalSegments[key]
-
-    if (v.segments.length > 5) {
-      groupedHorizontalSegments.push({
-        p1: { x: minX, y: v.segments[0].p1.y },
-        p2: { x: maxX, y: v.segments[0].p1.y },
-      })
-    }
-  })
-
-  Object.keys(mappedVerticalSegments).forEach(key => {
-    const v = mappedVerticalSegments[key]
-
-    if (v.segments.length > 5) {
-      groupedVerticalSegments.push({
-        p1: { x: v.segments[0].p1.x, y: minY },
-        p2: { x: v.segments[0].p1.x, y: maxY },
-      })
-    }
-  })
+  // cull lines that are close to each other
 
   return {
-    horizontalLines: groupedHorizontalSegments,
-    verticalLines: groupedVerticalSegments,
+    horizontalLines: horizontalSegments,
+    verticalLines: verticalSegments,
   }
 }
 
