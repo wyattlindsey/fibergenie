@@ -30,33 +30,11 @@ const upload = async (req, res) => {
     )
 
     const horizontalLines = extractChartLines(processedImagePath)
+    drawLines(processedImagePath, baseDirectoryPath, horizontalLines)
   } catch (e) {
     console.error(e)
     status = 500
   }
-
-  // await img.save(`${baseDirectoryPath}/original.jpg`)
-
-  // const upscaledImage = await upscaleImage(img)
-  // await upscaledImage.save(`${baseDirectoryPath}/upscaled-3x.jpg`)
-  //
-  // const processedImage = processImage(baseDirectoryPath, 'upscaled-3x.jpg')
-  // const { horizontalLines, verticalLines } = extractChartLines(processedImage)
-  // const withLines = processedImage.toColor()
-  //
-  // horizontalLines.forEach(line => {
-  //   withLines.drawLine(line.p1, line.p2, 2, 255, 0, 0)
-  // })
-  //
-  // verticalLines.forEach(line => {
-  //   withLines.drawLine(line.p1, line.p2, 2, 255, 0, 0)
-  // })
-  //
-  // fs.writeFileSync(
-  //   `${baseDirectoryPath}/with-lines.jpg`,
-  //   withLines.toBuffer('jpg')
-  // )
-  //
 
   // delete temp file
   fs.unlinkSync(tmpFilePath)
@@ -140,7 +118,7 @@ const extractChartLines = sourcePath => {
   const maxDeviation = 2
   const minLength = 10
   const minSegments = 5
-  const duplicateTolerance = 5
+  const toleranceFactor = 6
 
   // go through all the line segments and filter out short and non-horizontal segments
   lineSegments.forEach(seg => {
@@ -162,7 +140,9 @@ const extractChartLines = sourcePath => {
       []
     )
 
-    mappedHorizontalSegments[yCoord] = [...colinearSegmentsForYCoord, seg]
+    // todo check around base for others before starting a new segment coord
+
+    mappedHorizontalSegments[yCoord] = [...colinearSegmentsForYCoord, yCoord]
   })
 
   // make a collection of horizontal lines by filtering out just those with a lot of co-linear segments
@@ -172,15 +152,50 @@ const extractChartLines = sourcePath => {
     const segments = mappedHorizontalSegments[yCoord]
 
     if (segments.length >= minSegments) {
-      const hasNeighbor = Object.keys(lines).some(y => {
-        for (let x = 0; x <= duplicateTolerance * 2; x++) {
-          if (dotProp.get(y - duplicateTolerance + x)) return true
-        }
-      })
-      if (!hasNeighbor) dotProp.set(lines, yCoord, true)
+      dotProp.set(lines, yCoord, true)
     }
     return lines
   }, {})
+
+  // filter out any lines that don't fall within the average delta-y of the line collection
+  // sort key values just in case
+  const yValuesSorted = Object.keys(horizontalLines)
+    .sort((a, b) => Number.parseInt(a) - Number.parseInt(b))
+    .map(v => Number.parseInt(v))
+
+  const averageDeltaY = yValuesSorted.reduce((agg, v, i, arr) => {
+    if (i === arr.length - 1) {
+      return (agg + (v - arr[i - 1])) / arr.length
+    } else if (i > 0) {
+      return agg + (v - arr[i - 1])
+    } else {
+      return agg
+    }
+  }, 0)
+
+  const tolerance = averageDeltaY / toleranceFactor
+
+  const finalYValues = yValuesSorted.filter((v, i, arr) => {
+    if (i !== arr.length - 1) {
+      const yDist = arr[i + 1] - v
+      if (
+        yDist >= averageDeltaY - tolerance &&
+        yDist < averageDeltaY + tolerance
+      ) {
+        return true
+      }
+    } else {
+      const yDist = v - arr[i - 1]
+      if (
+        yDist >= averageDeltaY - tolerance &&
+        yDist < averageDeltaY + tolerance
+      ) {
+        return true
+      }
+    }
+  })
+
+  console.log('finalYValues', finalYValues)
 
   // get the mean stretch in horizontal and vertical directions
   // todo instead get the most common, with a small tolerance
@@ -238,7 +253,18 @@ const extractChartLines = sourcePath => {
 
   // cull lines that are close to each other
 
-  return horizontalLines
+  return finalYValues
+}
+
+const drawLines = (sourcePath, baseDir, lines) => {
+  const img = new dv.Image('jpg', fs.readFileSync(sourcePath))
+  const withLines = img.toColor()
+
+  lines.forEach(y => {
+    withLines.drawLine({ x: 0, y }, { x: TARGET_IMAGE_DIMS, y }, 2, 255, 0, 0)
+  })
+
+  fs.writeFileSync(`${baseDir}/with-lines.jpg`, withLines.toBuffer('jpg'))
 }
 
 export default {
