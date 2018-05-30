@@ -1,12 +1,9 @@
-// import cannyEdgeDetector from 'canny-edge-detector'
-import Image from 'image-js'
-
 import dotProp from 'dot-prop'
 import dv from 'ndv'
 import gm from 'gm'
 import fs from 'fs'
 
-const MIN_IMAGE_WIDTH = 2048
+const TARGET_IMAGE_WIDTH = 2048
 const UPLOADS_FOLDER = 'public/uploads'
 
 const upload = async (req, res) => {
@@ -20,17 +17,19 @@ const upload = async (req, res) => {
     fs.mkdirSync(baseDirectoryPath)
     const originalImagePath = await saveOriginal(tmpFilePath, baseDirectoryPath)
 
-    // save upscaled image to base directory
-    const upscaledImagePath = await upscaleImage(
+    // save resized image to base directory
+    const resizedImagePath = await resizeImage(
       originalImagePath,
       baseDirectoryPath
     )
 
     // prepare for edge detection
     const processedImagePath = await processImage(
-      upscaledImagePath,
+      resizedImagePath,
       baseDirectoryPath
     )
+
+    const horizontalLines = extractChartLines(processedImagePath)
   } catch (e) {
     console.error(e)
     status = 500
@@ -67,28 +66,29 @@ const upload = async (req, res) => {
 
 const saveOriginal = (sourcePath, baseDir) => {
   return new Promise(resolve => {
-    gm(sourcePath).write(`${baseDir}/original.jpg`, err => {
-      if (!err) {
-        resolve(`${baseDir}/original.jpg`)
-      } else {
-        throw 'Error saving original image'
-      }
-    })
+    gm(sourcePath)
+      .setFormat('jpg')
+      .write(`${baseDir}/original.jpg`, err => {
+        if (!err) {
+          resolve(`${baseDir}/original.jpg`)
+        } else {
+          throw 'Error saving original image'
+        }
+      })
   }).catch(err => {
     console.error(err)
   })
 }
 
-const upscaleImage = (sourcePath, baseDir) => {
-  console.log(sourcePath, baseDir)
+const resizeImage = (sourcePath, baseDir) => {
   return new Promise(resolve => {
     gm(sourcePath)
-      .magnify(3)
-      .write(`${baseDir}/upscaled-3x.jpg`, err => {
+      .resize(TARGET_IMAGE_WIDTH)
+      .write(`${baseDir}/resized-${TARGET_IMAGE_WIDTH}.jpg`, err => {
         if (!err) {
-          resolve(`${baseDir}/upscaled-3x.jpg`)
+          resolve(`${baseDir}/resized-${TARGET_IMAGE_WIDTH}.jpg`)
         } else {
-          throw 'Error upscaling image'
+          throw 'Error resizing image'
         }
       })
   }).catch(err => {
@@ -126,77 +126,61 @@ const processImage = (sourcePath, basePath) => {
   }
 }
 
-const extractChartLines = img => {
+const extractChartLines = sourcePath => {
+  const img = new dv.Image('jpg', fs.readFileSync(sourcePath))
   const lineSegments = img.toGray().lineSegments(6, 0, false)
 
+  // remove duplicate lines for similar y positions
+
   const mappedHorizontalSegments = {}
-  const mappedVerticalSegments = {}
   const horizontalSegments = []
-  const verticalSegments = []
   const maxDeviation = 2
   const minLength = 10
+  const minSegments = 5
+  const duplicateTolerance = 5
 
-  // sort into horizontal and vertical segments
+  // go through all the line segments and filter out short and non-horizontal segments
   lineSegments.forEach(seg => {
     const xDist = Math.abs(seg.p1.x - seg.p2.x)
     const yDist = Math.abs(seg.p1.y - seg.p2.y)
 
     if (xDist >= minLength && yDist <= maxDeviation) {
       horizontalSegments.push(seg)
-    } else if (yDist >= minLength && xDist <= maxDeviation) {
-      verticalSegments.push(seg)
     }
   })
 
-  // group all co-linear segments by common coord
+  // group them based on y position
   horizontalSegments.forEach(seg => {
-    const xCoord = seg.p1.x
     const yCoord = seg.p1.y
 
     const colinearSegmentsForYCoord = dotProp.get(
       mappedHorizontalSegments,
       `${yCoord}`,
-      {
-        minX: xCoord,
-        maxX: xCoord,
-        segments: [],
-      }
+      []
     )
 
-    const minX = Math.min(xCoord, colinearSegmentsForYCoord.minX)
-    const maxX = Math.max(xCoord, colinearSegmentsForYCoord.maxX)
-
-    mappedHorizontalSegments[yCoord] = {
-      minX,
-      maxX,
-      segments: [...colinearSegmentsForYCoord.segments, seg],
-    }
+    mappedHorizontalSegments[yCoord] = [
+      ...colinearSegmentsForYCoord.segments,
+      seg,
+    ]
   })
 
-  verticalSegments.forEach(seg => {
-    const xCoord = seg.p1.x
-    const yCoord = seg.p2.y
+  // make a collection of horizontal lines by filtering out just those with a lot of co-linear segments
+  const horizontalLines = Object.keys(
+    mappedHorizontalSegments
+  ).reduce((lines, yCoord) => {
+    const segments = mappedHorizontalSegments[yCoord]
 
-    const colinearSegmentsForXCoord = dotProp.get(
-      mappedVerticalSegments,
-      `${xCoord}`,
-      {
-        minY: yCoord,
-        maxY: yCoord,
-        segments: [],
-      }
-    )
-
-    const minY = Math.min(yCoord, colinearSegmentsForXCoord.minY)
-
-    const maxY = Math.max(yCoord, colinearSegmentsForXCoord.maxY)
-
-    mappedVerticalSegments[xCoord] = {
-      minY,
-      maxY,
-      segments: [...colinearSegmentsForXCoord.segments, seg],
+    if (segments.length >= minSegments) {
+      const hasNeighbor = Object.keys(lines).some(y => {
+        for (let x = 0; x <= duplicateTolerance * 2; x++) {
+          if (dotProp.get(y - duplicateTolerance + x)) return true
+        }
+      })
+      if (!hasNeighbor) dotProp.set(lines, yCoord, true)
     }
-  })
+    return lines
+  }, {})
 
   // get the mean stretch in horizontal and vertical directions
   // todo instead get the most common, with a small tolerance
@@ -254,10 +238,7 @@ const extractChartLines = img => {
 
   // cull lines that are close to each other
 
-  return {
-    horizontalLines: horizontalSegments,
-    verticalLines: verticalSegments,
-  }
+  return horizontalLines
 }
 
 export default {
