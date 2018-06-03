@@ -1,13 +1,17 @@
 import dotProp from 'dot-prop'
 import dv from 'ndv'
-import gm from 'gm'
+import { subClass } from 'gm'
 import fs from 'fs'
+import { PDFImage } from 'pdf-image'
+
+const gm = subClass({ imageMagick: true })
 
 const TARGET_IMAGE_DIMS = 2048
 const UPLOADS_FOLDER = 'public/uploads'
 
 const upload = async (req, res) => {
   let status = 201
+  const isPDF = dotProp.get(req, 'file.mimetype') === 'application/pdf'
   const tmpFilePath = dotProp.get(req, 'file.path')
   const tmpFileName = dotProp.get(req, 'file.filename')
   const baseDirectoryPath = `${UPLOADS_FOLDER}/${tmpFileName}`
@@ -15,22 +19,33 @@ const upload = async (req, res) => {
   try {
     // initialize folder and save original
     fs.mkdirSync(baseDirectoryPath)
-    const originalImagePath = await saveOriginal(tmpFilePath, baseDirectoryPath)
 
-    // save resized image to base directory
-    const resizedImagePath = await resizeImage(
-      originalImagePath,
-      baseDirectoryPath
-    )
+    if (isPDF) {
+      await convertPDF(tmpFilePath, baseDirectoryPath)
+    }
 
-    // prepare for edge detection
-    const processedImagePath = await processImage(
-      resizedImagePath,
-      baseDirectoryPath
-    )
+    // const originalImagePath = await saveOriginal(tmpFilePath, baseDirectoryPath)
 
-    const horizontalLines = extractChartLines(processedImagePath)
-    drawLines(processedImagePath, baseDirectoryPath, horizontalLines)
+    // if (isPDF) {
+    //   const pdfImage = new PDFImage(originalImagePath)
+    //   await pdfImage.convertFile()
+    // }
+    //
+    // // save resized image to base directory
+    // const resizedImagePath = await resizeImage(
+    //   originalImagePath,
+    //   baseDirectoryPath
+    // )
+    //
+    // // prepare for edge detection
+    // const processedImagePath = await processImage(
+    //   resizedImagePath,
+    //   baseDirectoryPath
+    // )
+    //
+    // const { horizontalLines, segments } = extractChartLines(processedImagePath)
+    // drawLines(processedImagePath, baseDirectoryPath, horizontalLines)
+    // drawSegments(processedImagePath, baseDirectoryPath, segments)
   } catch (e) {
     console.error(e)
     status = 500
@@ -40,6 +55,19 @@ const upload = async (req, res) => {
   fs.unlinkSync(tmpFilePath)
 
   res.sendStatus(status)
+}
+
+const convertPDF = (sourcePath, baseDir) => {
+  return new Promise(resolve => {
+    resolve()
+    // const pdfImage = new PDFImage(sourcePath)
+    // pdfImage.convertPage(0).then(imagePath => {
+    //   console.log(imagePath)
+    //   resolve(imagePath)
+    // })
+  }).catch(err => {
+    console.error(err)
+  })
 }
 
 const saveOriginal = (sourcePath, baseDir) => {
@@ -115,17 +143,18 @@ const extractChartLines = sourcePath => {
 
   const mappedHorizontalSegments = {}
   const horizontalSegments = []
-  const maxDeviation = 2
-  const minLength = 10
-  const minSegments = 5
-  const toleranceFactor = 6
+  const maxSkew = 2 // max y travel allowed for a segment to be considered horizontal (pixels)
+  const maxShift = 2 // max vertical difference allowed for segments to be grouped together (+- pixels)
+  const minLength = 10 // min width of segment to be collected
+  const minSegments = 5 // min segments required for a group of co-linear segments to be considered a line
+  const gridTolerance = 15 // how far a line can fall outside of the mean distance between lines (% of mean distance)
 
   // go through all the line segments and filter out short and non-horizontal segments
   lineSegments.forEach(seg => {
     const xDist = Math.abs(seg.p1.x - seg.p2.x)
     const yDist = Math.abs(seg.p1.y - seg.p2.y)
 
-    if (xDist >= minLength && yDist <= maxDeviation) {
+    if (xDist >= minLength && yDist <= maxSkew) {
       horizontalSegments.push(seg)
     }
   })
@@ -133,25 +162,37 @@ const extractChartLines = sourcePath => {
   // group them based on y position
   horizontalSegments.forEach(seg => {
     const yCoord = seg.p1.y
+    const length = Math.abs(seg.p2.x - seg.p1.x)
 
-    const colinearSegmentsForYCoord = dotProp.get(
-      mappedHorizontalSegments,
-      `${yCoord}`,
-      []
-    )
+    // group this segment with other segments within +- `maxShift` pixels
+    for (let i = 0; i <= maxShift * 2 + 1; i++) {
+      const nearbyYCoord = yCoord - maxShift + i
+      if (mappedHorizontalSegments[nearbyYCoord]) {
+        mappedHorizontalSegments[nearbyYCoord] = {
+          segments: [...mappedHorizontalSegments[nearbyYCoord].segments, seg],
+          totalLength:
+            mappedHorizontalSegments[nearbyYCoord].totalLength + length,
+        }
+        break
+      }
 
-    // todo check around base for others before starting a new segment coord
-
-    mappedHorizontalSegments[yCoord] = [...colinearSegmentsForYCoord, yCoord]
+      // nothing was found so initialize a new object
+      if (i === maxShift * 2 + 1) {
+        mappedHorizontalSegments[yCoord] = {
+          segments: [seg],
+          totalLength: length,
+        }
+      }
+    }
   })
 
   // make a collection of horizontal lines by filtering out just those with a lot of co-linear segments
   const horizontalLines = Object.keys(
     mappedHorizontalSegments
   ).reduce((lines, yCoord) => {
-    const segments = mappedHorizontalSegments[yCoord]
+    const { segments, totalLength } = mappedHorizontalSegments[yCoord]
 
-    if (segments.length >= minSegments) {
+    if (segments.length >= minSegments || totalLength > TARGET_IMAGE_DIMS / 2) {
       dotProp.set(lines, yCoord, true)
     }
     return lines
@@ -163,97 +204,53 @@ const extractChartLines = sourcePath => {
     .sort((a, b) => Number.parseInt(a) - Number.parseInt(b))
     .map(v => Number.parseInt(v))
 
-  const averageDeltaY = yValuesSorted.reduce((agg, v, i, arr) => {
+  const meanDeltaY = yValuesSorted.reduce((agg, v, i, arr) => {
     if (i === arr.length - 1) {
-      return (agg + (v - arr[i - 1])) / arr.length
+      agg.push(v - arr[i - 1])
+      agg.sort()
+      return agg[Math.floor(arr.length / 2)]
     } else if (i > 0) {
-      return agg + (v - arr[i - 1])
-    } else {
-      return agg
+      agg.push(arr[i + 1] - v)
     }
-  }, 0)
 
-  const tolerance = averageDeltaY / toleranceFactor
+    return agg
+  }, [])
+
+  const tolerance = meanDeltaY * gridTolerance / 100
 
   const finalYValues = yValuesSorted.filter((v, i, arr) => {
     if (i !== arr.length - 1) {
       const yDist = arr[i + 1] - v
-      if (
-        yDist >= averageDeltaY - tolerance &&
-        yDist < averageDeltaY + tolerance
-      ) {
+      if (yDist >= meanDeltaY - tolerance && yDist < meanDeltaY + tolerance) {
         return true
       }
     } else {
       const yDist = v - arr[i - 1]
-      if (
-        yDist >= averageDeltaY - tolerance &&
-        yDist < averageDeltaY + tolerance
-      ) {
+      if (yDist >= meanDeltaY - tolerance && yDist < meanDeltaY + tolerance) {
         return true
       }
     }
   })
 
-  console.log('finalYValues', finalYValues)
+  return { horizontalLines: finalYValues, segments: horizontalSegments }
+}
 
-  // get the mean stretch in horizontal and vertical directions
-  // todo instead get the most common, with a small tolerance
-  // const horizontalSegmentStartMap = {}
-  // const horizontalSegmentEndMap = {}
-  // // todo reduce to most common min and max X for horizontal and most common min and max Y for vertical
-  // Object.keys(mappedHorizontalSegments).forEach(key => {
-  //   const xCoord = Number.parseInt(key)
-  //   const horizontalSegmentsForX = mappedHorizontalSegments[key]
-  //
-  //   const startCount = dotProp.get(horizontalSegmentStartMap, key, 0)
-  //   dotProp.set(horizontalSegmentStartMap, xCoord, startCount + 1)
-  //
-  //   const endCount = dotProp.get(horizontalSegmentEndMap, key, 0)
-  //   dotProp.set(
-  //     horizontalSegmentEndMap,
-  //     horizontalSegmentsForX.maxX,
-  //     endCount + 1
-  //   )
-  // })
-  //
-  // let minY
-  // let maxY
-  // Object.keys(mappedVerticalSegments).forEach(key => {
-  //   const yCoord = Number.parseInt(key)
-  //   minY = minY ? Math.min(yCoord, minY) : yCoord
-  //   maxY = maxY ? Math.max(yCoord, maxY) : yCoord
-  // })
-  //
-  // // find only the co-linear segments with an appreciable number of segments
-  // const groupedHorizontalSegments = []
-  // const groupedVerticalSegments = []
-  //
-  // Object.keys(mappedHorizontalSegments).forEach(key => {
-  //   const v = mappedHorizontalSegments[key]
-  //
-  //   if (v.segments.length > 5) {
-  //     groupedHorizontalSegments.push({
-  //       p1: { x: minX, y: v.segments[0].p1.y },
-  //       p2: { x: maxX, y: v.segments[0].p1.y },
-  //     })
-  //   }
-  // })
-  //
-  // Object.keys(mappedVerticalSegments).forEach(key => {
-  //   const v = mappedVerticalSegments[key]
-  //
-  //   if (v.segments.length > 5) {
-  //     groupedVerticalSegments.push({
-  //       p1: { x: v.segments[0].p1.x, y: minY },
-  //       p2: { x: v.segments[0].p1.x, y: maxY },
-  //     })
-  //   }
-  // })
+const drawSegments = (sourcePath, baseDir, segments) => {
+  const img = new dv.Image('jpg', fs.readFileSync(sourcePath))
+  const withSegments = img.toColor()
 
-  // cull lines that are close to each other
+  segments.forEach(seg => {
+    withSegments.drawLine(
+      { x: seg.p1.x, y: seg.p1.y },
+      { x: seg.p2.x, y: seg.p2.y },
+      1,
+      0,
+      255,
+      255
+    )
+  })
 
-  return finalYValues
+  fs.writeFileSync(`${baseDir}/with-segments.jpg`, withSegments.toBuffer('jpg'))
 }
 
 const drawLines = (sourcePath, baseDir, lines) => {
