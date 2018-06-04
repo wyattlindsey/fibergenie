@@ -27,10 +27,7 @@ const upload = async (req, res) => {
       tmpFilePath = pdfPath
       originalImagePath = await convertPDF(pdfPath, baseDirectoryPath)
     } else {
-      originalImagePath = await saveOriginal(
-        tmpFilePath,
-        baseDirectoryPath
-      )
+      originalImagePath = await saveOriginal(tmpFilePath, baseDirectoryPath)
     }
 
     // save resized image to base directory
@@ -128,13 +125,13 @@ const processImage = async (sourcePath, basePath) => {
           const monochrome = gray
             .threshold(210)
             .invert()
-            .thin('bg', 8, 0)
+            .rotate(4)
+          const { angle } = monochrome.findSkew()
 
-          // todo img.findSkew()
-          fs.writeFileSync(
-            `${basePath}/processed.png`,
-            monochrome.toBuffer('png')
-          )
+          const deskewed = monochrome.rotate(angle)
+          const final = deskewed.thin('bg', 8, 0)
+
+          fs.writeFileSync(`${basePath}/processed.png`, final.toBuffer('png'))
           resolve(`${basePath}/processed.png`)
         }
       })
@@ -146,8 +143,6 @@ const processImage = async (sourcePath, basePath) => {
 const extractChartLines = sourcePath => {
   const img = new dv.Image('png', fs.readFileSync(sourcePath))
   const lineSegments = img.toGray().lineSegments(6, 0, false)
-
-  // remove duplicate lines for similar y positions
 
   const mappedHorizontalSegments = {}
   const horizontalSegments = []
@@ -175,11 +170,14 @@ const extractChartLines = sourcePath => {
     // group this segment with other segments within +- `maxShift` pixels
     for (let i = 0; i <= maxShift * 2 + 1; i++) {
       const nearbyYCoord = yCoord - maxShift + i
-      if (mappedHorizontalSegments[nearbyYCoord]) {
+      const candidate = mappedHorizontalSegments[nearbyYCoord]
+
+      if (candidate) {
         mappedHorizontalSegments[nearbyYCoord] = {
-          segments: [...mappedHorizontalSegments[nearbyYCoord].segments, seg],
-          totalLength:
-            mappedHorizontalSegments[nearbyYCoord].totalLength + length,
+          maxY: Math.max(yCoord, candidate.maxY),
+          minY: Math.min(yCoord, candidate.minY),
+          segments: [...candidate.segments, seg],
+          totalLength: candidate.totalLength + length,
         }
         break
       }
@@ -187,6 +185,8 @@ const extractChartLines = sourcePath => {
       // nothing was found so initialize a new object
       if (i === maxShift * 2 + 1) {
         mappedHorizontalSegments[yCoord] = {
+          maxY: yCoord,
+          minY: yCoord,
           segments: [seg],
           totalLength: length,
         }
@@ -200,15 +200,29 @@ const extractChartLines = sourcePath => {
   ).reduce((lines, yCoord) => {
     const { segments, totalLength } = mappedHorizontalSegments[yCoord]
 
-    if (segments.length >= minSegments || totalLength > TARGET_IMAGE_DIMS / 2) {
-      dotProp.set(lines, yCoord, true)
+    if (
+      segments.length >= minSegments ||
+      totalLength > TARGET_IMAGE_DIMS / 10
+    ) {
+      dotProp.set(lines, yCoord, mappedHorizontalSegments[yCoord])
     }
+
+    return lines
+  }, {})
+
+  // move horizontal lines to the midpoint between the min and max segments found
+  const averagedLines = Object.keys(horizontalLines).reduce((lines, yCoord) => {
+    const { maxY, minY } = horizontalLines[yCoord]
+    const midPoint = minY + Math.floor((maxY - minY) / 2)
+
+    lines[midPoint] = horizontalLines[yCoord]
+
     return lines
   }, {})
 
   // filter out any lines that don't fall within the average delta-y of the line collection
   // sort key values just in case
-  const yValuesSorted = Object.keys(horizontalLines)
+  const yValuesSorted = Object.keys(averagedLines)
     .sort((a, b) => Number.parseInt(a) - Number.parseInt(b))
     .map(v => Number.parseInt(v))
 
@@ -227,12 +241,12 @@ const extractChartLines = sourcePath => {
   const tolerance = meanDeltaY * gridTolerance / 100
 
   const finalYValues = yValuesSorted.filter((v, i, arr) => {
-    if (i !== arr.length - 1) {
+    if (i < 2) {
       const yDist = arr[i + 1] - v
       if (yDist >= meanDeltaY - tolerance && yDist < meanDeltaY + tolerance) {
         return true
       }
-    } else {
+    } else if (i !== arr.length - 1) {
       const yDist = v - arr[i - 1]
       if (yDist >= meanDeltaY - tolerance && yDist < meanDeltaY + tolerance) {
         return true
