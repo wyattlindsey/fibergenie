@@ -1,30 +1,37 @@
 import dotProp from 'dot-prop'
 import dv from 'ndv'
-import { subClass } from 'gm'
+import gm from 'gm'
 import fs from 'fs'
-import { PDFImage } from 'pdf-image'
-
-const gm = subClass({ imageMagick: true })
+import PDFConverter from 'pdf2pic'
 
 const TARGET_IMAGE_DIMS = 2048
 const UPLOADS_FOLDER = 'public/uploads'
 
 const upload = async (req, res) => {
+  // todo handle no file uploaded
+
   let status = 201
-  const isPDF = dotProp.get(req, 'file.mimetype') === 'application/pdf'
-  const tmpFilePath = dotProp.get(req, 'file.path')
+  let tmpFilePath = dotProp.get(req, 'file.path')
   const tmpFileName = dotProp.get(req, 'file.filename')
   const baseDirectoryPath = `${UPLOADS_FOLDER}/${tmpFileName}`
+  const isPDF = dotProp.get(req, 'file.mimetype') === 'application/pdf'
 
   try {
     // initialize folder and save original
     fs.mkdirSync(baseDirectoryPath)
+    let originalImagePath
 
     if (isPDF) {
-      await convertPDF(tmpFilePath, baseDirectoryPath)
+      const pdfPath = `${tmpFilePath}.pdf`
+      fs.renameSync(tmpFilePath, pdfPath)
+      tmpFilePath = pdfPath
+      originalImagePath = await convertPDF(pdfPath, baseDirectoryPath)
+    } else {
+      const originalImagePath = await saveOriginal(
+        tmpFilePath,
+        baseDirectoryPath
+      )
     }
-
-    // const originalImagePath = await saveOriginal(tmpFilePath, baseDirectoryPath)
 
     // if (isPDF) {
     //   const pdfImage = new PDFImage(originalImagePath)
@@ -59,12 +66,18 @@ const upload = async (req, res) => {
 
 const convertPDF = (sourcePath, baseDir) => {
   return new Promise(resolve => {
-    resolve()
-    // const pdfImage = new PDFImage(sourcePath)
-    // pdfImage.convertPage(0).then(imagePath => {
-    //   console.log(imagePath)
-    //   resolve(imagePath)
-    // })
+    const converter = new PDFConverter({
+      density: 72,
+      format: 'jpg',
+      savedir: baseDir,
+      savename: `converted`,
+      size: TARGET_IMAGE_DIMS,
+    })
+
+    converter.convert(sourcePath).then(res => {
+      const convertedPath = dotProp.get(res, 'path')
+      resolve(convertedPath)
+    })
   }).catch(err => {
     console.error(err)
   })
