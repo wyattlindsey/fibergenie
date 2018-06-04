@@ -27,32 +27,27 @@ const upload = async (req, res) => {
       tmpFilePath = pdfPath
       originalImagePath = await convertPDF(pdfPath, baseDirectoryPath)
     } else {
-      const originalImagePath = await saveOriginal(
+      originalImagePath = await saveOriginal(
         tmpFilePath,
         baseDirectoryPath
       )
     }
 
-    // if (isPDF) {
-    //   const pdfImage = new PDFImage(originalImagePath)
-    //   await pdfImage.convertFile()
-    // }
-    //
-    // // save resized image to base directory
-    // const resizedImagePath = await resizeImage(
-    //   originalImagePath,
-    //   baseDirectoryPath
-    // )
-    //
-    // // prepare for edge detection
-    // const processedImagePath = await processImage(
-    //   resizedImagePath,
-    //   baseDirectoryPath
-    // )
-    //
-    // const { horizontalLines, segments } = extractChartLines(processedImagePath)
-    // drawLines(processedImagePath, baseDirectoryPath, horizontalLines)
-    // drawSegments(processedImagePath, baseDirectoryPath, segments)
+    // save resized image to base directory
+    const resizedImagePath = await resizeImage(
+      originalImagePath,
+      baseDirectoryPath
+    )
+
+    // prepare for edge detection
+    const processedImagePath = await processImage(
+      resizedImagePath,
+      baseDirectoryPath
+    )
+
+    const { horizontalLines, segments } = extractChartLines(processedImagePath)
+    drawLines(processedImagePath, baseDirectoryPath, horizontalLines)
+    drawSegments(processedImagePath, baseDirectoryPath, segments)
   } catch (e) {
     console.error(e)
     status = 500
@@ -68,9 +63,9 @@ const convertPDF = (sourcePath, baseDir) => {
   return new Promise(resolve => {
     const converter = new PDFConverter({
       density: 72,
-      format: 'jpg',
+      format: 'png',
       savedir: baseDir,
-      savename: `converted`,
+      savename: `original`,
       size: TARGET_IMAGE_DIMS,
     })
 
@@ -86,10 +81,10 @@ const convertPDF = (sourcePath, baseDir) => {
 const saveOriginal = (sourcePath, baseDir) => {
   return new Promise(resolve => {
     gm(sourcePath)
-      .setFormat('jpg')
-      .write(`${baseDir}/original.jpg`, err => {
+      .setFormat('png')
+      .write(`${baseDir}/original.png`, err => {
         if (!err) {
-          resolve(`${baseDir}/original.jpg`)
+          resolve(`${baseDir}/original.png`)
         } else {
           throw 'Error saving original image'
         }
@@ -103,9 +98,9 @@ const resizeImage = (sourcePath, baseDir) => {
   return new Promise(resolve => {
     gm(sourcePath)
       .resize(TARGET_IMAGE_DIMS, TARGET_IMAGE_DIMS)
-      .write(`${baseDir}/resized-${TARGET_IMAGE_DIMS}.jpg`, err => {
+      .write(`${baseDir}/resized-${TARGET_IMAGE_DIMS}.png`, err => {
         if (!err) {
-          resolve(`${baseDir}/resized-${TARGET_IMAGE_DIMS}.jpg`)
+          resolve(`${baseDir}/resized-${TARGET_IMAGE_DIMS}.png`)
         } else {
           throw 'Error resizing image'
         }
@@ -120,14 +115,14 @@ const processImage = async (sourcePath, basePath) => {
     // use some filters from GraphicsMagick
     gm(sourcePath)
       .despeckle()
-      .write(`${basePath}/processed.jpg`, err => {
+      .write(`${basePath}/processed.png`, err => {
         if (err) {
           throw 'Error saving intermediate file'
         } else {
           // use some filters from DocumentVision
           const img = new dv.Image(
-            'jpg',
-            fs.readFileSync(`${basePath}/processed.jpg`)
+            'png',
+            fs.readFileSync(`${basePath}/processed.png`)
           )
           const gray = img.toGray('max')
           const monochrome = gray
@@ -137,10 +132,10 @@ const processImage = async (sourcePath, basePath) => {
 
           // todo img.findSkew()
           fs.writeFileSync(
-            `${basePath}/processed.jpg`,
-            monochrome.toBuffer('jpg')
+            `${basePath}/processed.png`,
+            monochrome.toBuffer('png')
           )
-          resolve(`${basePath}/processed.jpg`)
+          resolve(`${basePath}/processed.png`)
         }
       })
   }).catch(e => {
@@ -149,7 +144,7 @@ const processImage = async (sourcePath, basePath) => {
 }
 
 const extractChartLines = sourcePath => {
-  const img = new dv.Image('jpg', fs.readFileSync(sourcePath))
+  const img = new dv.Image('png', fs.readFileSync(sourcePath))
   const lineSegments = img.toGray().lineSegments(6, 0, false)
 
   // remove duplicate lines for similar y positions
@@ -249,7 +244,7 @@ const extractChartLines = sourcePath => {
 }
 
 const drawSegments = (sourcePath, baseDir, segments) => {
-  const img = new dv.Image('jpg', fs.readFileSync(sourcePath))
+  const img = new dv.Image('png', fs.readFileSync(sourcePath))
   const withSegments = img.toColor()
 
   segments.forEach(seg => {
@@ -263,18 +258,18 @@ const drawSegments = (sourcePath, baseDir, segments) => {
     )
   })
 
-  fs.writeFileSync(`${baseDir}/with-segments.jpg`, withSegments.toBuffer('jpg'))
+  fs.writeFileSync(`${baseDir}/with-segments.png`, withSegments.toBuffer('png'))
 }
 
 const drawLines = (sourcePath, baseDir, lines) => {
-  const img = new dv.Image('jpg', fs.readFileSync(sourcePath))
+  const img = new dv.Image('png', fs.readFileSync(sourcePath))
   const withLines = img.toColor()
 
   lines.forEach(y => {
     withLines.drawLine({ x: 0, y }, { x: TARGET_IMAGE_DIMS, y }, 2, 255, 0, 0)
   })
 
-  fs.writeFileSync(`${baseDir}/with-lines.jpg`, withLines.toBuffer('jpg'))
+  fs.writeFileSync(`${baseDir}/with-lines.png`, withLines.toBuffer('png'))
 }
 
 export default {
