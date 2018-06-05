@@ -122,10 +122,7 @@ const processImage = async (sourcePath, basePath) => {
             fs.readFileSync(`${basePath}/processed.png`)
           )
           const gray = img.toGray('max')
-          const monochrome = gray
-            .threshold(210)
-            .invert()
-            .rotate(4)
+          const monochrome = gray.threshold(210).invert()
           const { angle } = monochrome.findSkew()
 
           const deskewed = monochrome.rotate(angle)
@@ -150,7 +147,7 @@ const extractChartLines = sourcePath => {
   const maxShift = 2 // max vertical difference allowed for segments to be grouped together (+- pixels)
   const minLength = 10 // min width of segment to be collected
   const minSegments = 5 // min segments required for a group of co-linear segments to be considered a line
-  const gridTolerance = 15 // how far a line can fall outside of the mean distance between lines (% of mean distance)
+  const gridTolerance = 10 // how far a line can fall outside of the mean distance between lines (% of mean distance)
 
   // go through all the line segments and filter out short and non-horizontal segments
   lineSegments.forEach(seg => {
@@ -240,19 +237,26 @@ const extractChartLines = sourcePath => {
 
   const tolerance = meanDeltaY * gridTolerance / 100
 
-  const finalYValues = yValuesSorted.filter((v, i, arr) => {
-    if (i < 2) {
-      const yDist = arr[i + 1] - v
-      if (yDist >= meanDeltaY - tolerance && yDist < meanDeltaY + tolerance) {
-        return true
-      }
-    } else if (i !== arr.length - 1) {
-      const yDist = v - arr[i - 1]
-      if (yDist >= meanDeltaY - tolerance && yDist < meanDeltaY + tolerance) {
-        return true
-      }
-    }
+  // split y values in half and move from the middle out to determine if other lines are within tolerance
+  const midPointIndex = Math.floor(yValuesSorted.length / 2)
+
+  // move in forward direction from midpoint to beginning, which requires 2 reverses to iterate in the correct order
+  const topHalf = yValuesSorted
+    .slice(0, midPointIndex + 1)
+    .reverse()
+    .filter((v, i, arr) => {
+      const yDist = i === 0 ? v - arr[i + 1] : arr[i - 1] - v
+      return yDist >= meanDeltaY - tolerance && yDist < meanDeltaY + tolerance
+    })
+    .reverse()
+
+  // move from midpoint to end of yValuesSorted comparing always to the previous line for tolerance
+  const bottomHalf = yValuesSorted.slice(midPointIndex).filter((v, i, arr) => {
+    const yDist = v - arr[i - 1]
+    return yDist >= meanDeltaY - tolerance && yDist < meanDeltaY + tolerance
   })
+
+  const finalYValues = [...topHalf, ...bottomHalf]
 
   return { horizontalLines: finalYValues, segments: horizontalSegments }
 }
