@@ -2,7 +2,9 @@ import dotProp from 'dot-prop'
 import dv from 'ndv'
 import gm from 'gm'
 import fs from 'fs'
+import noop from 'lodash/noop'
 import PDFConverter from 'pdf2pic'
+import rimraf from 'rimraf'
 
 const TARGET_IMAGE_DIMS = 2048
 const UPLOADS_FOLDER = 'public/uploads'
@@ -61,11 +63,16 @@ const processUpload = async (file, destDir) => {
     const isPDF = mimetype === 'application/pdf'
 
     if (isPDF) {
+      const convertedPath = `${destDir}/converted_pdf_pages`
       // add pdf extension to filename to help with conversion
       const pdfPath = `${sourcePath}.pdf`
       fs.renameSync(sourcePath, pdfPath)
 
-      const PDFs = await convertPDF(pdfPath, destDir)
+      const PDFs = await convertPDF(pdfPath, convertedPath)
+
+      // remove '.pdf' extension so upload() handler can delete it with the original filename
+      fs.renameSync(pdfPath, sourcePath)
+
       // process each page from the source PDF
       const processedPages = PDFs.map(async (pdf, i) => {
         // create new subdirectory for page if this is a multi-page PDF
@@ -79,13 +86,12 @@ const processUpload = async (file, destDir) => {
         return await processPage(pdf.path, directoryForPage)
       })
 
-      Promise.all(processedPages).then(pages => {
-        // remove '.pdf' extension so upload() handler can delete it with the original filename
-        console.log('pdfPath', pdfPath)
-        console.log('sourcePath', sourcePath)
-        fs.renameSync(pdfPath, sourcePath)
-        return pages
-      })
+      const pages = await Promise.all(processedPages)
+
+      // remove temporary directory used for pdf conversion
+      rimraf(convertedPath, noop)
+
+      return pages
     } else {
       const processedPage = await processPage(
         sourcePath,
@@ -124,22 +130,15 @@ const processPage = async (sourcePath, baseDir) => {
 }
 
 const convertPDF = (sourcePath, baseDir) => {
-  return new Promise(resolve => {
-    const converter = new PDFConverter({
-      density: 300,
-      format: 'png',
-      savedir: `${baseDir}/converted_pdf_pages`,
-      savename: `original`,
-      size: TARGET_IMAGE_DIMS,
-    })
-
-    converter.convertBulk(sourcePath, -1).then(pages => {
-      console.log('res', pages)
-      resolve(pages)
-    })
-  }).catch(err => {
-    console.error(err)
+  const converter = new PDFConverter({
+    density: 300,
+    format: 'png',
+    savedir: baseDir,
+    savename: `original`,
+    size: TARGET_IMAGE_DIMS,
   })
+
+  return converter.convertBulk(sourcePath, -1)
 }
 
 const saveOriginal = (sourcePath, baseDir) => {
