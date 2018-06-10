@@ -36,44 +36,6 @@ const upload = async (req, res) => {
   }
 
   res.sendStatus(status)
-
-  // try {
-  //   fs.mkdirSync(baseDirectoryPath)
-  //   fs.mkdirSync(`${baseDirectoryPath}/page-1`)
-  //   let originalImagePath
-  //
-  //   if (isPDF) {
-  //     // add pdf extension to filename to help with conversion
-  //     const pdfPath = `${tmpFilePath}.pdf`
-  //     fs.renameSync(tmpFilePath, pdfPath)
-  //     tmpFilePath = pdfPath
-  //     originalImagePath = await convertPDF(pdfPath, baseDirectoryPath)
-  //   } else {
-  //     originalImagePath = await saveOriginal(
-  //       tmpFilePath,
-  //       `${baseDirectoryPath}/page-1`
-  //     )
-  //   }
-  //
-  //   // save resized image to base directory
-  //   const resizedImagePath = await resizeImage(
-  //     originalImagePath,
-  //     baseDirectoryPath
-  //   )
-  //
-  //   // prepare for edge detection
-  //   const preparedImagePath = await prepareImage(
-  //     resizedImagePath,
-  //     baseDirectoryPath
-  //   )
-  //
-  //   const { horizontalLines, segments } = extractChartLines(preparedImagePath)
-  //   drawLines(preparedImagePath, baseDirectoryPath, horizontalLines)
-  //   drawSegments(preparedImagePath, baseDirectoryPath, segments)
-  // } catch (e) {
-  //   console.error(e)
-  //   status = 500
-  // }
 }
 
 const prepareDirectories = id => {
@@ -97,23 +59,40 @@ const processUpload = async (file, destDir) => {
     if (!file) return null
     const { mimetype, path: sourcePath } = file
     const isPDF = mimetype === 'application/pdf'
-    const charts = []
 
     if (isPDF) {
-      const PDFs = await convertPDF(sourcePath, destDir)
+      // add pdf extension to filename to help with conversion
+      const pdfPath = `${sourcePath}.pdf`
+      fs.renameSync(sourcePath, pdfPath)
+
+      const PDFs = await convertPDF(pdfPath, destDir)
+      // process each page from the source PDF
       const processedPages = PDFs.map(async (pdf, i) => {
-        // const processedPage = await processPage
+        // create new subdirectory for page if this is a multi-page PDF
+        // note that `../page_1/` was already created
+        const directoryForPage = `${destDir}/${PAGE_PREFIX}${i + 1}`
+
+        if (i > 0) {
+          fs.mkdirSync(directoryForPage)
+        }
+
+        return await processPage(pdf.path, directoryForPage)
       })
-      Promise.all(processedPages).then(pages => {})
+
+      Promise.all(processedPages).then(pages => {
+        // remove '.pdf' extension so upload() handler can delete it with the original filename
+        console.log('pdfPath', pdfPath)
+        console.log('sourcePath', sourcePath)
+        fs.renameSync(pdfPath, sourcePath)
+        return pages
+      })
     } else {
       const processedPage = await processPage(
         sourcePath,
         `${destDir}/${PAGE_PREFIX}${1}`
       )
-      charts.push(processedPage)
+      return [processedPage]
     }
-
-    return charts
   } catch (e) {
     console.error(err)
     throw e
@@ -130,7 +109,7 @@ const processPage = async (sourcePath, baseDir) => {
   // prepare for chart scanning
   const preparedImagePath = await prepareImage(resizedImagePath, baseDir)
 
-  // process chart and return results
+  // process chart
   const results = extractChartLines(preparedImagePath)
 
   if (process.env.NODE_ENV === 'development') {
@@ -140,21 +119,23 @@ const processPage = async (sourcePath, baseDir) => {
     drawLines(preparedImagePath, baseDir, horizontalLines)
     drawSegments(preparedImagePath, baseDir, segments)
   }
+
+  return results
 }
 
 const convertPDF = (sourcePath, baseDir) => {
   return new Promise(resolve => {
     const converter = new PDFConverter({
-      density: 72,
+      density: 300,
       format: 'png',
-      savedir: baseDir,
+      savedir: `${baseDir}/converted_pdf_pages`,
       savename: `original`,
       size: TARGET_IMAGE_DIMS,
     })
 
-    converter.convertBulk(sourcePath, -1).then(res => {
-      console.log('res', res)
-      resolve(res.reduce((agg, img) => agg))
+    converter.convertBulk(sourcePath, -1).then(pages => {
+      console.log('res', pages)
+      resolve(pages)
     })
   }).catch(err => {
     console.error(err)

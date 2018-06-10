@@ -7,8 +7,10 @@
   },
   "main": "server.js",
   "scripts": {
+    "clean:uploads": "rm -rf public/uploads/*; mkdir public/uploads/tmp",
     "start": "nodemon server.js --exec babel-node",
-    "start:dev": "export NODE_ENV=development; nodemon server.js --exec babel-node",
+    "start:dev":
+      "export NODE_ENV=development; nodemon server.js --exec babel-node",
     "start:prod": "node server.js --exec babel-node"
   },
   "repository": {
