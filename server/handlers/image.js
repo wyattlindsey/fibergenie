@@ -93,29 +93,54 @@ const prepareDirectories = id => {
 }
 
 const processUpload = async (file, destDir) => {
-  return new Promise(resolve => {
-    if (!file) {
-      throw 'No file provided to processUpload'
-    } else {
-      const { mimetype, path: sourcePath } = file
-      const isPDF = mimetype === 'application/pdf'
+  try {
+    if (!file) return null
+    const { mimetype, path: sourcePath } = file
+    const isPDF = mimetype === 'application/pdf'
+    const charts = []
 
-      if (isPDF) {
-      } else {
-        const originalImagePath = saveOriginal(
-          sourcePath,
-          `${destDir}/${PAGE_PREFIX}${1}`
-        ).then(() => {
-          resolve(originalImagePath)
-        })
-      }
+    if (isPDF) {
+      const PDFs = await convertPDF(sourcePath, destDir)
+      const processedPages = PDFs.map(async (pdf, i) => {
+        // const processedPage = await processPage
+      })
+      Promise.all(processedPages).then(pages => {})
+    } else {
+      const processedPage = await processPage(
+        sourcePath,
+        `${destDir}/${PAGE_PREFIX}${1}`
+      )
+      charts.push(processedPage)
     }
-  }).catch(err => {
+
+    return charts
+  } catch (e) {
     console.error(err)
-  })
+    throw e
+  }
 }
 
-const processPage = (sourcePath, baseDir) => {}
+const processPage = async (sourcePath, baseDir) => {
+  // save original
+  const originalPath = await saveOriginal(sourcePath, baseDir)
+
+  // resize
+  const resizedImagePath = await resizeImage(originalPath, baseDir)
+
+  // prepare for chart scanning
+  const preparedImagePath = await prepareImage(resizedImagePath, baseDir)
+
+  // process chart and return results
+  const results = extractChartLines(preparedImagePath)
+
+  if (process.env.NODE_ENV === 'development') {
+    // create images with lines and segments drawn directly on the image at preparedImagePath
+    // for research and troubleshooting
+    const { horizontalLines, segments } = results
+    drawLines(preparedImagePath, baseDir, horizontalLines)
+    drawSegments(preparedImagePath, baseDir, segments)
+  }
+}
 
 const convertPDF = (sourcePath, baseDir) => {
   return new Promise(resolve => {
