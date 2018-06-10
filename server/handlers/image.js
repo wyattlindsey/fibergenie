@@ -6,55 +6,116 @@ import PDFConverter from 'pdf2pic'
 
 const TARGET_IMAGE_DIMS = 2048
 const UPLOADS_FOLDER = 'public/uploads'
+const PAGE_PREFIX = 'page_'
+
+// input is an image
+// output is an array of objects, one per chart, each containing grid information like line coords
+
+// pdf result in multiple images
+// output is still array of objects, one obj per chart, but results are per-page
+
+// upload() mainly kicks off the process and returns the results
+// processPage() runs a directory of images through the process of getting chart lines
+// convertPDF() creates any additional directories needed to support more pages
 
 const upload = async (req, res) => {
   // todo handle no file uploaded
 
   let status = 201
-  let tmpFilePath = dotProp.get(req, 'file.path')
-  const tmpFileName = dotProp.get(req, 'file.filename')
-  const baseDirectoryPath = `${UPLOADS_FOLDER}/${tmpFileName}`
-  const isPDF = dotProp.get(req, 'file.mimetype') === 'application/pdf'
+  const fileId = dotProp.get(req, 'file.filename')
+  const tmpFilePath = dotProp.get(req, 'file.path')
 
-  try {
-    // initialize folder and save original
-    fs.mkdirSync(baseDirectoryPath)
-    let originalImagePath
+  const { baseDirectory, err } = prepareDirectories(fileId)
 
-    if (isPDF) {
-      const pdfPath = `${tmpFilePath}.pdf`
-      fs.renameSync(tmpFilePath, pdfPath)
-      tmpFilePath = pdfPath
-      originalImagePath = await convertPDF(pdfPath, baseDirectoryPath)
-    } else {
-      originalImagePath = await saveOriginal(tmpFilePath, baseDirectoryPath)
-    }
-
-    // save resized image to base directory
-    const resizedImagePath = await resizeImage(
-      originalImagePath,
-      baseDirectoryPath
-    )
-
-    // prepare for edge detection
-    const processedImagePath = await processImage(
-      resizedImagePath,
-      baseDirectoryPath
-    )
-
-    const { horizontalLines, segments } = extractChartLines(processedImagePath)
-    drawLines(processedImagePath, baseDirectoryPath, horizontalLines)
-    drawSegments(processedImagePath, baseDirectoryPath, segments)
-  } catch (e) {
-    console.error(e)
+  if (err) {
     status = 500
+  } else {
+    await processUpload(req.file, baseDirectory)
+    // delete temp file
+    fs.unlinkSync(tmpFilePath)
   }
 
-  // delete temp file
-  fs.unlinkSync(tmpFilePath)
-
   res.sendStatus(status)
+
+  // try {
+  //   fs.mkdirSync(baseDirectoryPath)
+  //   fs.mkdirSync(`${baseDirectoryPath}/page-1`)
+  //   let originalImagePath
+  //
+  //   if (isPDF) {
+  //     // add pdf extension to filename to help with conversion
+  //     const pdfPath = `${tmpFilePath}.pdf`
+  //     fs.renameSync(tmpFilePath, pdfPath)
+  //     tmpFilePath = pdfPath
+  //     originalImagePath = await convertPDF(pdfPath, baseDirectoryPath)
+  //   } else {
+  //     originalImagePath = await saveOriginal(
+  //       tmpFilePath,
+  //       `${baseDirectoryPath}/page-1`
+  //     )
+  //   }
+  //
+  //   // save resized image to base directory
+  //   const resizedImagePath = await resizeImage(
+  //     originalImagePath,
+  //     baseDirectoryPath
+  //   )
+  //
+  //   // prepare for edge detection
+  //   const preparedImagePath = await prepareImage(
+  //     resizedImagePath,
+  //     baseDirectoryPath
+  //   )
+  //
+  //   const { horizontalLines, segments } = extractChartLines(preparedImagePath)
+  //   drawLines(preparedImagePath, baseDirectoryPath, horizontalLines)
+  //   drawSegments(preparedImagePath, baseDirectoryPath, segments)
+  // } catch (e) {
+  //   console.error(e)
+  //   status = 500
+  // }
 }
+
+const prepareDirectories = id => {
+  const res = { baseDirectory: '', err: null }
+
+  try {
+    const baseDirectoryPath = `${UPLOADS_FOLDER}/${id}`
+    fs.mkdirSync(baseDirectoryPath)
+    fs.mkdirSync(`${baseDirectoryPath}/page_1`)
+    res.baseDirectory = baseDirectoryPath
+  } catch (e) {
+    console.error(e)
+    res.err = e
+  }
+
+  return res
+}
+
+const processUpload = async (file, destDir) => {
+  return new Promise(resolve => {
+    if (!file) {
+      throw 'No file provided to processUpload'
+    } else {
+      const { mimetype, path: sourcePath } = file
+      const isPDF = mimetype === 'application/pdf'
+
+      if (isPDF) {
+      } else {
+        const originalImagePath = saveOriginal(
+          sourcePath,
+          `${destDir}/${PAGE_PREFIX}${1}`
+        ).then(() => {
+          resolve(originalImagePath)
+        })
+      }
+    }
+  }).catch(err => {
+    console.error(err)
+  })
+}
+
+const processPage = (sourcePath, baseDir) => {}
 
 const convertPDF = (sourcePath, baseDir) => {
   return new Promise(resolve => {
@@ -66,9 +127,9 @@ const convertPDF = (sourcePath, baseDir) => {
       size: TARGET_IMAGE_DIMS,
     })
 
-    converter.convert(sourcePath).then(res => {
-      const convertedPath = dotProp.get(res, 'path')
-      resolve(convertedPath)
+    converter.convertBulk(sourcePath, -1).then(res => {
+      console.log('res', res)
+      resolve(res.reduce((agg, img) => agg))
     })
   }).catch(err => {
     console.error(err)
@@ -107,19 +168,19 @@ const resizeImage = (sourcePath, baseDir) => {
   })
 }
 
-const processImage = async (sourcePath, basePath) => {
+const prepareImage = async (sourcePath, basePath) => {
   return new Promise(resolve => {
     // use some filters from GraphicsMagick
     gm(sourcePath)
       .despeckle()
-      .write(`${basePath}/processed.png`, err => {
+      .write(`${basePath}/prepared.png`, err => {
         if (err) {
           throw 'Error saving intermediate file'
         } else {
           // use some filters from DocumentVision
           const img = new dv.Image(
             'png',
-            fs.readFileSync(`${basePath}/processed.png`)
+            fs.readFileSync(`${basePath}/prepared.png`)
           )
           const gray = img.toGray('max')
           const monochrome = gray.threshold(210).invert()
@@ -128,8 +189,8 @@ const processImage = async (sourcePath, basePath) => {
           const deskewed = monochrome.rotate(angle)
           const final = deskewed.thin('bg', 8, 0)
 
-          fs.writeFileSync(`${basePath}/processed.png`, final.toBuffer('png'))
-          resolve(`${basePath}/processed.png`)
+          fs.writeFileSync(`${basePath}/prepared.png`, final.toBuffer('png'))
+          resolve(`${basePath}/prepared.png`)
         }
       })
   }).catch(e => {
@@ -256,9 +317,35 @@ const extractChartLines = sourcePath => {
     return yDist >= meanDeltaY - tolerance && yDist < meanDeltaY + tolerance
   })
 
-  const finalYValues = [...topHalf, ...bottomHalf]
+  const joinedYValues = [...topHalf, ...bottomHalf]
 
-  return { horizontalLines: finalYValues, segments: horizontalSegments }
+  let groupIndex = 0
+
+  const groups = joinedYValues.reduce(
+    (all, v, i, arr) => {
+      // check if current value and next value are within tolerance
+      // otherwise start a new group
+      const yDistToNext = arr[i + 1] - v
+
+      all[groupIndex].push(v)
+
+      if (yDistToNext > meanDeltaY + tolerance) {
+        // outside of tolerance - increment groupIndex
+        groupIndex++
+        all.push([])
+      }
+
+      return all
+    },
+    [[]]
+  )
+
+  const biggestGroup = groups.reduce(
+    (biggest, group) =>
+      Math.max(biggest.length, group.length) === group.length ? group : biggest
+  )
+
+  return { horizontalLines: biggestGroup, segments: horizontalSegments }
 }
 
 const drawSegments = (sourcePath, baseDir, segments) => {
