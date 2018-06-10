@@ -100,7 +100,7 @@ const processUpload = async (file, destDir) => {
       return [processedPage]
     }
   } catch (e) {
-    console.error(err)
+    console.error(e)
     throw e
   }
 }
@@ -203,9 +203,159 @@ const prepareImage = async (sourcePath, basePath) => {
   })
 }
 
+const extractLines = (lineSegments, axis = 'x') => {
+  const isVertical = axis === 'y'
+  const perpAxis = isVertical ? 'x' : 'y'
+  const maxSkew = 2 // max perpendicular travel allowed for a segment to be considered horizontal or vertical (pixels)
+  const maxShift = 2 // max perpendicular difference allowed for segments to be grouped together (+- pixels)
+  const minLength = 10 // min length of segment in pixels to be saved as part of a potential line
+  const minSegments = 5 // min segments required for a group of co-linear segments to be considered a line
+  const gridTolerance = 10 // how far a line can fall outside of the mean distance between lines (% of mean distance)
+
+  // go through all the line segments and filter out short and non-horizontal segments
+  const directionalSegments = lineSegments.filter(seg => {
+    const colinearDistance = Math.abs(seg.p1[axis] - seg.p2[axis])
+    const perpendicularDistance = Math.abs(seg.p1[perpAxis] - seg.p2[perpAxis])
+
+    return colinearDistance >= minLength && perpendicularDistance <= maxSkew
+  })
+
+  // group them based on position along perpendicular of `axis`
+  const mappedSegments = directionalSegments.reduce((segments, seg) => {
+    const key = seg.p1[perpAxis]
+    const length = Math.abs(seg.p2[axis] - seg.p1[axis])
+
+    // group this segment with other segments within +- `maxShift` pixels
+    for (let i = 0; i <= maxShift * 2 + 1; i++) {
+      const nearbyCoord = key - maxShift + i
+      const candidate = segments[nearbyCoord]
+
+      if (candidate) {
+        segments[nearbyCoord] = {
+          max: Math.max(key, candidate.max),
+          min: Math.min(key, candidate.min),
+          segments: [...candidate.segments, seg],
+          totalLength: candidate.totalLength + length,
+        }
+        break
+      }
+
+      // nothing was found so initialize a new object
+      if (i === maxShift * 2 + 1) {
+        segments[key] = {
+          max: key,
+          min: key,
+          segments: [seg],
+          totalLength: length,
+        }
+      }
+    }
+
+    return segments
+  }, {})
+
+  // make a collection of lines by filtering out just those with a lot of co-linear segments or those segments
+  // that are unusually large
+  const directionalLines = Object.keys(mappedSegments).reduce((lines, key) => {
+    const { segments, totalLength } = mappedSegments[key]
+
+    if (
+      segments.length >= minSegments ||
+      totalLength > TARGET_IMAGE_DIMS / 10
+    ) {
+      dotProp.set(lines, key, mappedSegments[key])
+    }
+
+    return lines
+  }, {})
+
+  // move lines to the midpoint between the min and max segments found
+  const averagedLines = Object.keys(directionalLines).reduce((lines, key) => {
+    const { max, min } = directionalLines[key]
+    const midPoint = min + Math.floor((max - min) / 2)
+
+    lines[midPoint] = directionalLines[key]
+
+    return lines
+  }, {})
+
+  // filter out any lines that don't fall within the average delta (perpendicular axis) of the line collection
+  // sort key values just in case
+  const sortedKeys = Object.keys(averagedLines)
+    .sort((a, b) => Number.parseInt(a) - Number.parseInt(b))
+    .map(v => Number.parseInt(v))
+
+  const meanDelta = sortedKeys.reduce((agg, v, i, arr) => {
+    if (i === arr.length - 1) {
+      agg.push(v - arr[i - 1])
+      agg.sort()
+      return agg[Math.floor(arr.length / 2)]
+    } else if (i > 0) {
+      agg.push(arr[i + 1] - v)
+    }
+
+    return agg
+  }, [])
+
+  const tolerance = meanDelta * gridTolerance / 100
+
+  // split y values in half and move from the middle out to determine if other lines are within tolerance
+  const midPointIndex = Math.floor(sortedKeys.length / 2)
+
+  // move in forward direction from midpoint to beginning, which requires 2 reverses to iterate in the correct order
+  const keysA = sortedKeys
+    .slice(0, midPointIndex + 1)
+    .reverse()
+    .filter((v, i, arr) => {
+      const dist = i === 0 ? v - arr[i + 1] : arr[i - 1] - v
+      return dist >= meanDelta - tolerance && dist < meanDelta + tolerance
+    })
+    .reverse()
+
+  // move from midpoint to end of yValuesSorted comparing always to the previous line for tolerance
+  const keysB = sortedKeys.slice(midPointIndex).filter((v, i, arr) => {
+    const dist = v - arr[i - 1]
+    return dist >= meanDelta - tolerance && dist < meanDelta + tolerance
+  })
+
+  const joinedKeys = [...keysA, ...keysB]
+
+  let groupIndex = 0
+
+  const groups = joinedKeys.reduce(
+    (all, v, i, arr) => {
+      // check if current value and next value are within tolerance
+      // otherwise start a new group
+      const distToNext = arr[i + 1] - v
+
+      all[groupIndex].push(v)
+
+      if (distToNext > meanDelta + tolerance) {
+        // outside of tolerance - increment groupIndex
+        groupIndex++
+        all.push([])
+      }
+
+      return all
+    },
+    [[]]
+  )
+
+  const biggestGroup = groups.reduce(
+    (biggest, group) =>
+      Math.max(biggest.length, group.length) === group.length ? group : biggest
+  )
+
+  return { horizontalLines: biggestGroup, segments: directionalSegments }
+}
+
 const extractChartLines = sourcePath => {
   const img = new dv.Image('png', fs.readFileSync(sourcePath))
   const lineSegments = img.toGray().lineSegments(6, 0, false)
+
+  const verticalLines = extractLines(lineSegments, 'x')
+
+  console.log('verticalLines', verticalLines)
 
   const mappedHorizontalSegments = {}
   const horizontalSegments = []
