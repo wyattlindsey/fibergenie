@@ -222,6 +222,7 @@ const extractLines = (lineSegments, axis = 'x', options = {}) => {
 
   // how far a line can fall outside of the mean distance between lines (% of mean distance)
   const gridTolerance = dotProp.get(options, 'gridTolerance', 10)
+  /* end options */
 
   // go through all the line segments and filter out short and non co-linear segments
   const directionalSegments = lineSegments.filter(seg => {
@@ -235,6 +236,8 @@ const extractLines = (lineSegments, axis = 'x', options = {}) => {
   const mappedSegments = directionalSegments.reduce((segments, seg) => {
     const key = seg.p1[perpAxis]
     const length = Math.abs(seg.p2[axis] - seg.p1[axis])
+    const maxColinearCoord = Math.max(seg.p2[axis], seg.p1[axis])
+    const minColinearCoord = Math.min(seg.p2[axis], seg.p1[axis])
 
     // group this segment with other segments within +- `maxShift` pixels
     for (let i = 0; i <= maxShift * 2 + 1; i++) {
@@ -245,6 +248,8 @@ const extractLines = (lineSegments, axis = 'x', options = {}) => {
         segments[nearbyCoord] = {
           [`max${perpAxis}`]: Math.max(key, candidate[`max${perpAxis}`]),
           [`min${perpAxis}`]: Math.min(key, candidate[`min${perpAxis}`]),
+          [`max${axis}`]: Math.max(maxColinearCoord, candidate[`max${axis}`]),
+          [`min${axis}`]: Math.min(minColinearCoord, candidate[`min${axis}`]),
           segments: [...candidate.segments, seg],
           totalLength: candidate.totalLength + length,
         }
@@ -256,6 +261,8 @@ const extractLines = (lineSegments, axis = 'x', options = {}) => {
         segments[key] = {
           [`max${perpAxis}`]: key,
           [`min${perpAxis}`]: key,
+          [`max${axis}`]: maxColinearCoord,
+          [`min${axis}`]: minColinearCoord,
           segments: [seg],
           totalLength: length,
         }
@@ -286,6 +293,7 @@ const extractLines = (lineSegments, axis = 'x', options = {}) => {
       [`max${perpAxis}`]: max,
       [`min${perpAxis}`]: min,
     } = directionalLines[key]
+
     const midPoint = min + Math.floor((max - min) / 2)
 
     lines[midPoint] = directionalLines[key]
@@ -361,7 +369,20 @@ const extractLines = (lineSegments, axis = 'x', options = {}) => {
       Math.max(biggest.length, group.length) === group.length ? group : biggest
   )
 
-  return biggestGroup
+  return biggestGroup.map(key => {
+    const min = dotProp.get(averagedLines, `${key}.min${axis}`)
+    const max = dotProp.get(averagedLines, `${key}.max${axis}`)
+    return {
+      p1: {
+        [`${axis}`]: min,
+        [`${perpAxis}`]: key,
+      },
+      p2: {
+        [`${axis}`]: max,
+        [`${perpAxis}`]: key,
+      },
+    }
+  })
 }
 
 const extractChartLines = sourcePath => {
@@ -369,12 +390,12 @@ const extractChartLines = sourcePath => {
   const lineSegments = img.toGray().lineSegments(6, 0, false)
 
   const horizontalLines = extractLines(lineSegments, 'x')
-  // const verticalLines = extractLines(lineSegments, 'y')
+  const verticalLines = extractLines(lineSegments, 'y')
 
   // now that we have a list of coords in either axis for lines, use that information to determine where the chart
   // edges are
 
-  return { lines: horizontalLines, segments: lineSegments }
+  return { lines: verticalLines, segments: lineSegments }
 }
 
 const drawSegments = (sourcePath, baseDir, segments) => {
@@ -400,14 +421,7 @@ const drawLines = (sourcePath, baseDir, lines) => {
   const withLines = img.toColor()
 
   lines.forEach(line => {
-    withLines.drawLine(
-      { x: 0, y: line },
-      { x: TARGET_IMAGE_DIMS, y: line },
-      2,
-      255,
-      0,
-      0
-    )
+    withLines.drawLine(line.p1, line.p2, 2, 255, 0, 0)
   })
 
   fs.writeFileSync(`${baseDir}/with-lines.png`, withLines.toBuffer('png'))
