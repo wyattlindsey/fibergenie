@@ -121,8 +121,8 @@ const processPage = async (sourcePath, baseDir) => {
   if (process.env.NODE_ENV === 'development') {
     // create images with lines and segments drawn directly on the image at preparedImagePath
     // for research and troubleshooting
-    const { lines, segments } = results
-    drawLines(preparedImagePath, baseDir, lines)
+    const { boundingBox, rowPositions, segments } = results
+    drawLines(preparedImagePath, baseDir, boundingBox, rowPositions)
     drawSegments(preparedImagePath, baseDir, segments)
   }
 
@@ -288,7 +288,7 @@ const extractLines = (lineSegments, axis = 'x', options = {}) => {
   }, {})
 
   // move lines to the midpoint between the min and max segments found
-  const averagedLines = Object.keys(directionalLines).reduce((lines, key) => {
+  const normalizedLines = Object.keys(directionalLines).reduce((lines, key) => {
     const {
       [`max${perpAxis}`]: max,
       [`min${perpAxis}`]: min,
@@ -303,7 +303,7 @@ const extractLines = (lineSegments, axis = 'x', options = {}) => {
 
   // filter out any lines that don't fall within the average delta (perpendicular axis) of the line collection
   // sort key values just in case
-  const sortedKeys = Object.keys(averagedLines)
+  const sortedKeys = Object.keys(normalizedLines)
     .sort((a, b) => Number.parseInt(a) - Number.parseInt(b))
     .map(v => Number.parseInt(v))
 
@@ -369,33 +369,75 @@ const extractLines = (lineSegments, axis = 'x', options = {}) => {
       Math.max(biggest.length, group.length) === group.length ? group : biggest
   )
 
-  return biggestGroup.map(key => {
-    const min = dotProp.get(averagedLines, `${key}.min${axis}`)
-    const max = dotProp.get(averagedLines, `${key}.max${axis}`)
-    return {
-      p1: {
-        [`${axis}`]: min,
-        [`${perpAxis}`]: key,
-      },
-      p2: {
-        [`${axis}`]: max,
-        [`${perpAxis}`]: key,
-      },
-    }
-  })
+  return {
+    averageDistance: meanDelta,
+    lines: biggestGroup.map(key => {
+      const min = dotProp.get(normalizedLines, `${key}.min${axis}`)
+      const max = dotProp.get(normalizedLines, `${key}.max${axis}`)
+      return {
+        p1: {
+          [`${axis}`]: min,
+          [`${perpAxis}`]: key,
+        },
+        p2: {
+          [`${axis}`]: max,
+          [`${perpAxis}`]: key,
+        },
+      }
+    }),
+  }
 }
 
 const extractChartLines = sourcePath => {
   const img = new dv.Image('png', fs.readFileSync(sourcePath))
-  const lineSegments = img.toGray().lineSegments(6, 0, false)
+  const segments = img.toGray().lineSegments(6, 0, false)
 
-  const horizontalLines = extractLines(lineSegments, 'x')
-  const verticalLines = extractLines(lineSegments, 'y')
+  const {
+    averageDistance: averageYDistance,
+    lines: horizontalLines,
+  } = extractLines(segments, 'x')
+  const {
+    averageDistance: averageXDistance,
+    lines: verticalLines,
+  } = extractLines(segments, 'y', {
+    minLength: 25,
+    minSegments: 8,
+  })
 
-  // now that we have a list of coords in either axis for lines, use that information to determine where the chart
-  // edges are
+  // find the mean endpoints for each set of lines
+  const meanMinXEndpoint = horizontalLines
+    .map(line => line.p1.x)
+    .sort((a, b) => a - b)
+    .find((x, i, arr) => i === Math.floor(arr.length / 2))
+  const meanMaxXEndpoint = horizontalLines
+    .map(line => line.p2.x)
+    .sort((a, b) => a - b)
+    .find((x, i, arr) => i === Math.floor(arr.length / 2))
+  const meanMinYEndpoint = verticalLines
+    .map(line => line.p1.y)
+    .sort((a, b) => a - b)
+    .find((y, i, arr) => Math.floor(arr.length / 2))
+  const meanMaxYEndpoint = verticalLines
+    .map(line => line.p2.y)
+    .sort((a, b) => a - b)
+    .find((y, i, arr) => Math.floor(arr.length / 2))
 
-  return { lines: verticalLines, segments: lineSegments }
+  const boundingBox = [
+    [meanMinXEndpoint, meanMinYEndpoint],
+    [meanMaxXEndpoint, meanMaxYEndpoint],
+  ]
+
+  const horizontalTolerance = (meanMaxYEndpoint - meanMinYEndpoint) * 0.5
+
+  const rowPositions = horizontalLines
+    .filter(
+      line =>
+        line.p1.y >= meanMinYEndpoint - horizontalTolerance &&
+        line.p1.y <= meanMaxYEndpoint + horizontalTolerance
+    )
+    .map(line => line.p1.y)
+
+  return { boundingBox, rowPositions, segments }
 }
 
 const drawSegments = (sourcePath, baseDir, segments) => {
@@ -416,12 +458,14 @@ const drawSegments = (sourcePath, baseDir, segments) => {
   fs.writeFileSync(`${baseDir}/with-segments.png`, withSegments.toBuffer('png'))
 }
 
-const drawLines = (sourcePath, baseDir, lines) => {
+const drawLines = (sourcePath, baseDir, boundingBox, rowPositions) => {
   const img = new dv.Image('png', fs.readFileSync(sourcePath))
   const withLines = img.toColor()
 
-  lines.forEach(line => {
-    withLines.drawLine(line.p1, line.p2, 2, 255, 0, 0)
+  const [[minX, minY], [maxX, maxY]] = boundingBox
+
+  rowPositions.forEach(y => {
+    withLines.drawLine({ x: minX, y }, { x: maxX, y }, 2, 255, 0, 0)
   })
 
   fs.writeFileSync(`${baseDir}/with-lines.png`, withLines.toBuffer('png'))
