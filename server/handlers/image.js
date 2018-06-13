@@ -118,11 +118,17 @@ const processPage = async (sourcePath, baseDir) => {
   // process chart
   const results = extractChartLines(preparedImagePath)
 
-  if (process.env.NODE_ENV === 'development') {
+  if (process.env.NODE_ENV === 'development' && results) {
     // create images with lines and segments drawn directly on the image at preparedImagePath
     // for research and troubleshooting
-    const { boundingBox, rowPositions, segments } = results
-    drawLines(preparedImagePath, baseDir, boundingBox, rowPositions)
+    const { boundingBox, rowPositions, segments, verticalLines } = results
+    drawLines(
+      preparedImagePath,
+      baseDir,
+      boundingBox,
+      rowPositions,
+      verticalLines
+    )
     drawSegments(preparedImagePath, baseDir, segments)
   }
 
@@ -404,6 +410,8 @@ const extractChartLines = sourcePath => {
     minSegments: 8,
   })
 
+  if (horizontalLines.length === 0 || verticalLines.length === 0) return false
+
   // find the mean endpoints for each set of lines
   const meanMinXEndpoint = horizontalLines
     .map(line => line.p1.x)
@@ -416,16 +424,104 @@ const extractChartLines = sourcePath => {
   const meanMinYEndpoint = verticalLines
     .map(line => line.p1.y)
     .sort((a, b) => a - b)
-    .find((y, i, arr) => Math.floor(arr.length / 2))
+    .find((y, i, arr) => i === Math.floor(arr.length / 2))
   const meanMaxYEndpoint = verticalLines
     .map(line => line.p2.y)
     .sort((a, b) => a - b)
-    .find((y, i, arr) => Math.floor(arr.length / 2))
+    .find((y, i, arr) => i === Math.floor(arr.length / 2))
 
-  const boundingBox = [
-    [meanMinXEndpoint, meanMinYEndpoint],
-    [meanMaxXEndpoint, meanMaxYEndpoint],
-  ]
+  const boundingBox = {
+    p1: {
+      x: meanMinXEndpoint,
+      y: meanMinYEndpoint,
+    },
+    p2: {
+      x: meanMaxXEndpoint,
+      y: meanMaxYEndpoint,
+    },
+  }
+
+  // check if the leftmost vertical line is less than the meanMinXEndpoint
+  // if it is, add another line at the beginning at max of 0 or vertical line minX - averageXDistance
+  const firstVerticalLine = verticalLines[0]
+  if (firstVerticalLine.p1.x > meanMinXEndpoint + averageXDistance * 0.1) {
+    const x = Math.max(0, firstVerticalLine.p1.x - averageXDistance)
+
+    boundingBox.p1.x = Math.min(x, meanMinXEndpoint)
+
+    verticalLines.unshift({
+      p1: {
+        x,
+        y: firstVerticalLine.p1.y,
+      },
+      p2: {
+        x,
+        y: firstVerticalLine.p2.y,
+      },
+    })
+  }
+
+  // check if rightmost vertical line is more than meanMaxXEndpoint
+  // if it is, add another line at the end of the array at min of target dims or maxX + averageXDistance
+  const lastVerticalLine = verticalLines[verticalLines.length - 1]
+  if (lastVerticalLine.p1.x < meanMaxXEndpoint - averageXDistance * 0.1) {
+    const x = Math.min(
+      TARGET_IMAGE_DIMS,
+      lastVerticalLine.p1.x + averageXDistance
+    )
+
+    boundingBox.p2.x = Math.max(x, meanMaxXEndpoint)
+
+    verticalLines.push({
+      p1: {
+        x,
+        y: lastVerticalLine.p1.y,
+      },
+      p2: {
+        x,
+        y: lastVerticalLine.p2.y,
+      },
+    })
+  }
+
+  const firstHorizontalLine = horizontalLines[0]
+  if (firstHorizontalLine.p1.y > meanMinYEndpoint + averageYDistance * 0.1) {
+    const y = Math.max(0, firstHorizontalLine.p1.y - averageYDistance)
+
+    boundingBox.p1.y = Math.min(y, meanMinYEndpoint)
+
+    horizontalLines.unshift({
+      p1: {
+        x: firstHorizontalLine.p1.x,
+        y,
+      },
+      p2: {
+        x: firstHorizontalLine.p2.x,
+        y,
+      },
+    })
+  }
+
+  const lastHorizontalLine = horizontalLines[horizontalLines.length - 1]
+  if (lastHorizontalLine.p1.y < meanMaxYEndpoint - averageYDistance * 0.1) {
+    const y = Math.min(
+      TARGET_IMAGE_DIMS,
+      lastHorizontalLine.p1.x + averageYDistance
+    )
+
+    boundingBox.p2.y = Math.max(y, meanMaxYEndpoint)
+
+    horizontalLines.push({
+      p1: {
+        x: lastHorizontalLine.p1.x,
+        y,
+      },
+      p2: {
+        x: lastHorizontalLine.p2.x,
+        y,
+      },
+    })
+  }
 
   const horizontalTolerance = (meanMaxYEndpoint - meanMinYEndpoint) * 0.5
 
@@ -437,7 +533,7 @@ const extractChartLines = sourcePath => {
     )
     .map(line => line.p1.y)
 
-  return { boundingBox, rowPositions, segments }
+  return { boundingBox, rowPositions, segments, verticalLines }
 }
 
 const drawSegments = (sourcePath, baseDir, segments) => {
@@ -458,15 +554,37 @@ const drawSegments = (sourcePath, baseDir, segments) => {
   fs.writeFileSync(`${baseDir}/with-segments.png`, withSegments.toBuffer('png'))
 }
 
-const drawLines = (sourcePath, baseDir, boundingBox, rowPositions) => {
+const drawLines = (
+  sourcePath,
+  baseDir,
+  boundingBox,
+  rowPositions,
+  verticalLines
+) => {
   const img = new dv.Image('png', fs.readFileSync(sourcePath))
   const withLines = img.toColor()
 
-  const [[minX, minY], [maxX, maxY]] = boundingBox
+  const { p1, p2 } = boundingBox
 
   rowPositions.forEach(y => {
-    withLines.drawLine({ x: minX, y }, { x: maxX, y }, 2, 255, 0, 0)
+    withLines.drawLine({ x: p1.x, y }, { x: p2.x, y }, 2, 255, 0, 0)
   })
+
+  verticalLines.forEach(line => {
+    withLines.drawLine(
+      { x: line.p1.x, y: line.p1.y },
+      { x: line.p2.x, y: line.p2.y },
+      2,
+      0,
+      0,
+      255
+    )
+  })
+
+  withLines.drawLine({ x: p1.x, y: p1.y }, { x: p2.x, y: p1.y }, 3, 0, 255, 0)
+  withLines.drawLine({ x: p2.x, y: p1.y }, { x: p2.x, y: p2.y }, 3, 0, 255, 0)
+  withLines.drawLine({ x: p2.x, y: p2.y }, { x: p1.x, y: p2.y }, 3, 0, 255, 0)
+  withLines.drawLine({ x: p1.x, y: p2.y }, { x: p1.x, y: p1.y }, 3, 0, 255, 0)
 
   fs.writeFileSync(`${baseDir}/with-lines.png`, withLines.toBuffer('png'))
 }
