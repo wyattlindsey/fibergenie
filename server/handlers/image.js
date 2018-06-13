@@ -406,7 +406,7 @@ const extractChartLines = sourcePath => {
     averageDistance: averageXDistance,
     lines: verticalLines,
   } = extractLines(segments, 'y', {
-    minLength: 25,
+    minLength: Math.ceil(averageYDistance / 3),
     minSegments: 8,
   })
 
