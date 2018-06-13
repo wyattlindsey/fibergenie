@@ -132,6 +132,8 @@ const processPage = async (sourcePath, baseDir) => {
     drawSegments(preparedImagePath, baseDir, segments)
   }
 
+  const resizedResults = resizeChartLines(results, originalPath)
+
   return results
 }
 
@@ -534,6 +536,28 @@ const extractChartLines = sourcePath => {
     .map(line => line.p1.y)
 
   return { boundingBox, rowPositions, segments, verticalLines }
+}
+
+const resizeChartLines = (chartData, originalImagePath) => {
+  const { boundingBox, rowPositions } = chartData
+  const originalImage = new dv.Image('png', fs.readFileSync(originalImagePath))
+  const originalWidth = originalImage.width
+  const ratio = originalWidth / TARGET_IMAGE_DIMS
+
+  const resizedBoundingBox = {
+    p1: {
+      x: Math.ceil(boundingBox.p1.x * ratio),
+      y: Math.ceil(boundingBox.p1.y * ratio),
+    },
+    p2: {
+      x: Math.ceil(boundingBox.p2.x * ratio),
+      y: Math.ceil(boundingBox.p2.y * ratio),
+    },
+  }
+
+  const resizedRowPositions = rowPositions.map(row => Math.ceil(row * ratio))
+
+  console.log('resizedRowPositions', resizedRowPositions)
 }
 
 const drawSegments = (sourcePath, baseDir, segments) => {
