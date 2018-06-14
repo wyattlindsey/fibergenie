@@ -414,6 +414,8 @@ const extractChartLines = sourcePath => {
 
   if (horizontalLines.length === 0 || verticalLines.length === 0) return false
 
+  console.log('horizontalLines', horizontalLines.length)
+
   // find the mean endpoints for each set of lines
   const meanMinXEndpoint = horizontalLines
     .map(line => line.p1.x)
@@ -432,6 +434,14 @@ const extractChartLines = sourcePath => {
     .sort((a, b) => a - b)
     .find((y, i, arr) => i === Math.floor(arr.length / 2))
 
+  const verticalTolerance = averageYDistance * 0.1
+
+  const filteredHorizontalLines = horizontalLines.filter(
+    line =>
+      line.p1.y >= meanMinYEndpoint - verticalTolerance &&
+      line.p1.y <= meanMaxYEndpoint + verticalTolerance
+  )
+
   const boundingBox = {
     p1: {
       x: meanMinXEndpoint,
@@ -447,17 +457,17 @@ const extractChartLines = sourcePath => {
   // if it is, add another line at the beginning at max of 0 or vertical line minX - averageXDistance
   const firstVerticalLine = verticalLines[0]
   if (firstVerticalLine.p1.x > meanMinXEndpoint + averageXDistance * 0.1) {
-    const x = Math.max(0, firstVerticalLine.p1.x - averageXDistance)
+    const minX = Math.max(0, firstVerticalLine.p1.x - averageXDistance)
 
-    boundingBox.p1.x = Math.min(x, meanMinXEndpoint)
+    boundingBox.p1.x = Math.min(minX, meanMinXEndpoint)
 
     verticalLines.unshift({
       p1: {
-        x,
+        x: minX,
         y: firstVerticalLine.p1.y,
       },
       p2: {
-        x,
+        x: minX,
         y: firstVerticalLine.p2.y,
       },
     })
@@ -467,73 +477,70 @@ const extractChartLines = sourcePath => {
   // if it is, add another line at the end of the array at min of target dims or maxX + averageXDistance
   const lastVerticalLine = verticalLines[verticalLines.length - 1]
   if (lastVerticalLine.p1.x < meanMaxXEndpoint - averageXDistance * 0.1) {
-    const x = Math.min(
-      TARGET_IMAGE_DIMS,
-      lastVerticalLine.p1.x + averageXDistance
-    )
+    const maxX = Math.min(img.width, lastVerticalLine.p1.x + averageXDistance)
 
-    boundingBox.p2.x = Math.max(x, meanMaxXEndpoint)
+    boundingBox.p2.x = Math.max(maxX, meanMaxXEndpoint)
 
     verticalLines.push({
       p1: {
-        x,
+        x: maxX,
         y: lastVerticalLine.p1.y,
       },
       p2: {
-        x,
+        x: maxX,
         y: lastVerticalLine.p2.y,
       },
     })
   }
 
-  const firstHorizontalLine = horizontalLines[0]
+  const firstHorizontalLine = filteredHorizontalLines[0]
   if (firstHorizontalLine.p1.y > meanMinYEndpoint + averageYDistance * 0.1) {
-    const y = Math.max(0, firstHorizontalLine.p1.y - averageYDistance)
+    const minY = Math.max(0, firstHorizontalLine.p1.y - averageYDistance)
 
-    boundingBox.p1.y = Math.min(y, meanMinYEndpoint)
+    boundingBox.p1.y = Math.min(minY, meanMinYEndpoint)
 
-    horizontalLines.unshift({
+    filteredHorizontalLines.unshift({
       p1: {
         x: firstHorizontalLine.p1.x,
-        y,
+        y: minY,
       },
       p2: {
         x: firstHorizontalLine.p2.x,
-        y,
+        y: minY,
       },
     })
   }
 
-  const lastHorizontalLine = horizontalLines[horizontalLines.length - 1]
+  const lastHorizontalLine =
+    filteredHorizontalLines[filteredHorizontalLines.length - 1]
   if (lastHorizontalLine.p1.y < meanMaxYEndpoint - averageYDistance * 0.1) {
-    const y = Math.min(
-      TARGET_IMAGE_DIMS,
-      lastHorizontalLine.p1.x + averageYDistance
+    const maxY = Math.min(
+      img.height,
+      lastHorizontalLine.p1.y + averageYDistance
     )
 
-    boundingBox.p2.y = Math.max(y, meanMaxYEndpoint)
+    boundingBox.p2.y = Math.max(maxY, meanMaxYEndpoint)
 
-    horizontalLines.push({
+    filteredHorizontalLines.push({
       p1: {
         x: lastHorizontalLine.p1.x,
-        y,
+        y: maxY,
       },
       p2: {
         x: lastHorizontalLine.p2.x,
-        y,
+        y: maxY,
       },
     })
   }
 
-  const horizontalTolerance = (meanMaxYEndpoint - meanMinYEndpoint) * 0.5
+  const rowPositions = filteredHorizontalLines.map(line => line.p1.y)
 
-  const rowPositions = horizontalLines
-    .filter(
-      line =>
-        line.p1.y >= meanMinYEndpoint - horizontalTolerance &&
-        line.p1.y <= meanMaxYEndpoint + horizontalTolerance
-    )
-    .map(line => line.p1.y)
+  // adjust bounding box one last time in case some lines were filtered out
+  boundingBox.p1.y = Math.min(boundingBox.p1.y, rowPositions[0])
+  boundingBox.p2.y = Math.max(
+    boundingBox.p2.y,
+    rowPositions[rowPositions.length - 1]
+  )
 
   return { boundingBox, rowPositions, segments, verticalLines }
 }
@@ -556,8 +563,6 @@ const resizeChartLines = (chartData, originalImagePath) => {
   }
 
   const resizedRowPositions = rowPositions.map(row => Math.ceil(row * ratio))
-
-  console.log('resizedRowPositions', resizedRowPositions)
 }
 
 const drawSegments = (sourcePath, baseDir, segments) => {
