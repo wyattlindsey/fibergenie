@@ -118,23 +118,21 @@ const processPage = async (sourcePath, baseDir) => {
   // process chart
   const results = extractChartLines(preparedImagePath)
 
+  // scale results back to original image size
+  const resizedResults = resizeChartLines(
+    results,
+    originalPath,
+    resizedImagePath
+  )
+
   if (process.env.NODE_ENV === 'development' && results) {
     // create images with lines and segments drawn directly on the image at preparedImagePath
     // for research and troubleshooting
-    const { boundingBox, rowPositions, segments, verticalLines } = results
-    drawLines(
-      preparedImagePath,
-      baseDir,
-      boundingBox,
-      rowPositions,
-      verticalLines
-    )
-    drawSegments(preparedImagePath, baseDir, segments)
+    const { boundingBox, rowPositions } = resizedResults
+    drawLines(originalPath, baseDir, boundingBox, rowPositions)
   }
 
-  const resizedResults = resizeChartLines(results, originalPath)
-
-  return results
+  return resizedResults
 }
 
 const convertPDF = (sourcePath, baseDir) => {
@@ -168,7 +166,7 @@ const saveOriginal = (sourcePath, baseDir) => {
 const resizeImage = (sourcePath, baseDir) => {
   return new Promise(resolve => {
     gm(sourcePath)
-      .resize(TARGET_IMAGE_DIMS, TARGET_IMAGE_DIMS)
+      .resize(null, TARGET_IMAGE_DIMS)
       .write(`${baseDir}/resized-${TARGET_IMAGE_DIMS}.png`, err => {
         if (!err) {
           resolve(`${baseDir}/resized-${TARGET_IMAGE_DIMS}.png`)
@@ -414,8 +412,6 @@ const extractChartLines = sourcePath => {
 
   if (horizontalLines.length === 0 || verticalLines.length === 0) return false
 
-  console.log('horizontalLines', horizontalLines.length)
-
   // find the mean endpoints for each set of lines
   const meanMinXEndpoint = horizontalLines
     .map(line => line.p1.x)
@@ -535,7 +531,7 @@ const extractChartLines = sourcePath => {
 
   const rowPositions = filteredHorizontalLines.map(line => line.p1.y)
 
-  // adjust bounding box one last time in case some lines were filtered out
+  // adjust bounding box one last time to match first and last chart lines
   boundingBox.p1.y = Math.min(boundingBox.p1.y, rowPositions[0])
   boundingBox.p2.y = Math.max(
     boundingBox.p2.y,
@@ -545,11 +541,13 @@ const extractChartLines = sourcePath => {
   return { boundingBox, rowPositions, segments, verticalLines }
 }
 
-const resizeChartLines = (chartData, originalImagePath) => {
+const resizeChartLines = (chartData, originalImagePath, resizedImagePath) => {
   const { boundingBox, rowPositions } = chartData
   const originalImage = new dv.Image('png', fs.readFileSync(originalImagePath))
   const originalWidth = originalImage.width
-  const ratio = originalWidth / TARGET_IMAGE_DIMS
+  const resizedImage = new dv.Image('png', fs.readFileSync(resizedImagePath))
+  const resizedWith = resizedImage.width
+  const ratio = originalWidth / resizedWith
 
   const resizedBoundingBox = {
     p1: {
@@ -563,33 +561,11 @@ const resizeChartLines = (chartData, originalImagePath) => {
   }
 
   const resizedRowPositions = rowPositions.map(row => Math.ceil(row * ratio))
+
+  return { boundingBox: resizedBoundingBox, rowPositions: resizedRowPositions }
 }
 
-const drawSegments = (sourcePath, baseDir, segments) => {
-  const img = new dv.Image('png', fs.readFileSync(sourcePath))
-  const withSegments = img.toColor()
-
-  segments.forEach(seg => {
-    withSegments.drawLine(
-      { x: seg.p1.x, y: seg.p1.y },
-      { x: seg.p2.x, y: seg.p2.y },
-      1,
-      0,
-      255,
-      255
-    )
-  })
-
-  fs.writeFileSync(`${baseDir}/with-segments.png`, withSegments.toBuffer('png'))
-}
-
-const drawLines = (
-  sourcePath,
-  baseDir,
-  boundingBox,
-  rowPositions,
-  verticalLines
-) => {
+const drawLines = (sourcePath, baseDir, boundingBox, rowPositions) => {
   const img = new dv.Image('png', fs.readFileSync(sourcePath))
   const withLines = img.toColor()
 
@@ -597,17 +573,6 @@ const drawLines = (
 
   rowPositions.forEach(y => {
     withLines.drawLine({ x: p1.x, y }, { x: p2.x, y }, 2, 255, 0, 0)
-  })
-
-  verticalLines.forEach(line => {
-    withLines.drawLine(
-      { x: line.p1.x, y: line.p1.y },
-      { x: line.p2.x, y: line.p2.y },
-      2,
-      0,
-      0,
-      255
-    )
   })
 
   withLines.drawLine({ x: p1.x, y: p1.y }, { x: p2.x, y: p1.y }, 3, 0, 255, 0)
