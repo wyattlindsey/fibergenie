@@ -23,21 +23,26 @@ const PAGE_PREFIX = 'page_'
 const upload = async (req, res) => {
   // todo handle no file uploaded
 
-  let status = 201
   const fileId = dotProp.get(req, 'file.filename')
   const tmpFilePath = dotProp.get(req, 'file.path')
 
   const { baseDirectory, err } = prepareDirectories(fileId)
 
   if (err) {
-    status = 500
+    res.status(500).send('Error creating directory')
   } else {
-    await processUpload(req.file, baseDirectory)
-    // delete temp file
-    fs.unlinkSync(tmpFilePath)
-  }
+    try {
+      const chartData = await processUpload(req.file, baseDirectory)
 
-  res.sendStatus(status)
+      // delete temp file
+      fs.unlinkSync(tmpFilePath)
+
+      res.status(201).send(chartData)
+    } catch (e) {
+      console.error(e)
+      res.status(500).send('Error processing file')
+    }
+  }
 }
 
 const prepareDirectories = id => {
@@ -125,7 +130,7 @@ const processPage = async (sourcePath, baseDir) => {
     resizedImagePath
   )
 
-  if (process.env.NODE_ENV === 'development' && results) {
+  if (process.env.NODE_ENV === 'development' && resizedResults) {
     // create images with lines and segments drawn directly on the image at preparedImagePath
     // for research and troubleshooting
     const { boundingBox, rowPositions } = resizedResults
@@ -543,6 +548,8 @@ const extractChartLines = sourcePath => {
 
 const resizeChartLines = (chartData, originalImagePath, resizedImagePath) => {
   const { boundingBox, rowPositions } = chartData
+  if (!boundingBox || !rowPositions) return null
+
   const originalImage = new dv.Image('png', fs.readFileSync(originalImagePath))
   const originalWidth = originalImage.width
   const resizedImage = new dv.Image('png', fs.readFileSync(resizedImagePath))
