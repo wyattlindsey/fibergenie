@@ -184,7 +184,7 @@ const resizeImage = (sourcePath, baseDir) => {
   })
 }
 
-const prepareImage = async (sourcePath, basePath) => {
+const prepareImage = (sourcePath, basePath) => {
   return new Promise(resolve => {
     // use some filters from GraphicsMagick
     gm(sourcePath)
