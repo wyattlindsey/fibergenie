@@ -1,3 +1,5 @@
+// @flow
+
 import dotProp from 'dot-prop'
 import dv from 'ndv'
 import gm from 'gm'
@@ -20,7 +22,7 @@ const PAGE_PREFIX = 'page_'
 // processPage() runs a directory of images through the process of getting chart lines
 // convertPDF() creates any additional directories needed to support more pages
 
-const upload = async (req, res) => {
+const upload = async (req, res): void => {
   // todo handle no file uploaded
 
   const fileId = dotProp.get(req, 'file.filename')
