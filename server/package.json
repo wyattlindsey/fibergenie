@@ -11,8 +11,7 @@
     "flow": "flow",
     "lint": "eslint **/*.js",
     "start": "nodemon server.js --exec babel-node",
-    "start:dev":
-      "export NODE_ENV=development; nodemon server.js --exec 'yarn lint && yarn flow && babel-node'",
+    "start:dev": "export NODE_ENV=development; nodemon server.js --exec 'yarn lint && yarn flow && babel-node'",
     "start:prod": "node server.js --exec babel-node",
     "test": "mocha --require babel-core/register --watch **/*.test.js "
   },
@@ -47,6 +46,7 @@
     "eslint-plugin-import": "^2.12.0",
     "flow-bin": "^0.74.0",
     "mocha": "^5.2.0",
-    "nodemon": "^1.17.5"
+    "nodemon": "^1.17.5",
+    "sinon": "^6.0.0"
   }
 }

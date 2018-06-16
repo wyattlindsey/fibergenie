@@ -157,3 +157,5 @@ const processPage = async (
 }
 
 export default { upload }
+
+export { prepareDirectories, processUpload, processPage }
