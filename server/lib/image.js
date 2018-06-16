@@ -23,13 +23,11 @@ const convertPDF = (
   return converter.convertBulk(sourcePath, -1)
 }
 
-const getDimensions = (
-  sourcePath: string
-): Promise<?ImageDimensions> => {
+const getDimensions = (sourcePath: string): Promise<?ImageDimensions> => {
   return new Promise(resolve => {
     gm(sourcePath).size((err, dims) => {
       if (err || !dims) {
-        throw 'Error getting image dimensions: '
+        throw new Error('Error getting image dimensions')
       } else {
         resolve(dims)
       }
@@ -81,7 +79,7 @@ const resize = (
         if (!err) {
           resolve(`${baseDir}/resized-${targetSize}.png`)
         } else {
-          throw 'Error resizing image'
+          throw new Error('Error resizing image')
         }
       })
   }).catch(err => {
@@ -97,7 +95,7 @@ const saveCopy = (sourcePath: string, baseDir: string): Promise<?string> => {
         if (!err) {
           resolve(`${baseDir}/original.png`)
         } else {
-          throw 'Error saving original image'
+          throw new Error('Error saving original image')
         }
       })
   }).catch(err => {

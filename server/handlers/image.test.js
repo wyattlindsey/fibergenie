@@ -3,13 +3,18 @@ import fs from 'fs'
 import noop from 'lodash/noop'
 import sinon from 'sinon'
 
-import imageHandler from './image'
+import imageHandler, { prepareDirectories, UPLOADS_FOLDER } from './image'
+
+const fileToUpload = {
+  filename: 'file-id',
+  path: `${UPLOADS_FOLDER}/tmp`,
+}
 
 const mkdirSyncStub = sinon.stub(fs, 'mkdirSync')
 const renameSyncStub = sinon.stub(fs, 'renameSync')
 const unlinkSyncStub = sinon.stub(fs, 'unlinkSync')
+const writeFileSyncStub = sinon.stub(fs, 'writeFileSync')
 
-const request = {}
 const response = {
   send: noop,
   status: noop,
@@ -24,6 +29,7 @@ describe('image upload', () => {
     mkdirSyncStub.restore()
     renameSyncStub.restore()
     unlinkSyncStub.restore()
+    writeFileSyncStub.restore()
   })
 
   beforeEach(() => {})
@@ -34,7 +40,22 @@ describe('image upload', () => {
   })
 
   it('responds with 500 status code when no image is included in request', async () => {
+    const request = {}
     await imageHandler.upload(request, response)
     expect(response.status.calledWith(500))
+  })
+
+  it('creates a new directory in the uploads folder using the provided id', () => {
+    const res = prepareDirectories(fileToUpload.filename)
+    expect(mkdirSyncStub.calledWith(fileToUpload.filename))
+    expect(res).to.deep.equal({
+      baseDirectory: `${UPLOADS_FOLDER}/${fileToUpload.filename}`,
+      err: null,
+    })
+  })
+
+  it('creates a page_1 subdirectory by default', () => {
+    const res = prepareDirectories(fileToUpload.filename)
+    expect(mkdirSyncStub.calledWith(`${res.baseDirectory}/page_1`))
   })
 })
