@@ -58,4 +58,22 @@ describe('image upload', () => {
     const res = prepareDirectories(fileToUpload.filename)
     expect(mkdirSyncStub.calledWith(`${res.baseDirectory}/page_1`))
   })
+
+  it('responds with a 500 status code if directories cannot be created', () => {
+    mkdirSyncStub.throws()
+    const res = prepareDirectories((fileToUpload.filename))
+    expect(res.err).to.not.be.null
+  })
+
+  it('renames PDF files in the temp directory to include the .pdf extension', () => {
+
+  })
+
+  it('calls PDF conversion method for the correct file type', () => {
+
+  })
+
+  it('responds with chart data on success', () => {
+    
+  })
 })
