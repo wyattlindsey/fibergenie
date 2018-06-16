@@ -1,10 +1,14 @@
+// @flow
+
 import handlers from './handlers'
+
+import type { $Application, $Request, $Response } from 'express'
 
 const multer = require('multer')
 const upload = multer({ dest: 'public/uploads/tmp' })
 
-const routes = app => {
-  app.get('/', (req, res) => {
+const routes = (app: $Application): void => {
+  app.get('/', (req: $Request, res: $Response): void => {
     res.send('Hello World!')
   })
 

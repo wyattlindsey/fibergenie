@@ -4,3 +4,4 @@ client/dist/
 server/public/
 yarn-error.log
 .yarnclean
+server/flow-typed/npm/
