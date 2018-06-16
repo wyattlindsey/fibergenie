@@ -405,6 +405,29 @@ const resizeChartLines = (
   return { boundingBox: resizedBoundingBox, rowPositions: resizedRowPositions }
 }
 
+const drawLines = (
+  sourcePath: string,
+  baseDir: string,
+  chartData: ChartData
+) => {
+  const img = new dv.Image('png', fs.readFileSync(sourcePath))
+  const withLines = img.toColor()
+
+  const { p1, p2 } = chartData.boundingBox
+
+  chartData.rowPositions.forEach(y => {
+    withLines.drawLine({ x: p1.x, y }, { x: p2.x, y }, 2, 255, 0, 0)
+  })
+
+  withLines.drawLine({ x: p1.x, y: p1.y }, { x: p2.x, y: p1.y }, 3, 0, 255, 0)
+  withLines.drawLine({ x: p2.x, y: p1.y }, { x: p2.x, y: p2.y }, 3, 0, 255, 0)
+  withLines.drawLine({ x: p2.x, y: p2.y }, { x: p1.x, y: p2.y }, 3, 0, 255, 0)
+  withLines.drawLine({ x: p1.x, y: p2.y }, { x: p1.x, y: p1.y }, 3, 0, 255, 0)
+
+  fs.writeFileSync(`${baseDir}/with-lines.png`, withLines.toBuffer('png'))
+}
+
 export default {
+  drawLines,
   extractLines,
 }

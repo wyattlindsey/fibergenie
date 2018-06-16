@@ -1,7 +1,6 @@
 // @flow
 
 import dotProp from 'dot-prop'
-import dv from 'ndv'
 import fs from 'fs'
 import noop from 'lodash/noop'
 import rimraf from 'rimraf'
@@ -11,6 +10,7 @@ import Chart from '../lib/chart'
 
 import type { $Request, $Response } from 'express'
 import type { ChartData } from '../types/chart'
+import type { ImageDimensions } from '../types/image'
 
 type Request = $Request & { file: any }
 
@@ -141,37 +141,19 @@ const processPage = async (
   if (!preparedImagePath) return null
 
   // process chart
-  const originalDimensions = await Image.getDimensions(originalPath)
+  const originalDimensions: ImageDimensions = await Image.getDimensions(
+    originalPath
+  )
   if (!originalDimensions) return null
   const results = Chart.extractLines(preparedImagePath, originalDimensions)
 
   if (process.env.NODE_ENV === 'development' && results) {
     // create images with lines and segments drawn directly on the image at preparedImagePath
     // for research and troubleshooting
-    drawLines(originalPath, baseDir, results)
+    Chart.drawLines(originalPath, baseDir, results)
   }
 
   return results
 }
 
-const drawLines = (sourcePath: string, baseDir: string, chartData: ChartData) => {
-  const img = new dv.Image('png', fs.readFileSync(sourcePath))
-  const withLines = img.toColor()
-
-  const { p1, p2 } = chartData.boundingBox
-
-  chartData.rowPositions.forEach(y => {
-    withLines.drawLine({ x: p1.x, y }, { x: p2.x, y }, 2, 255, 0, 0)
-  })
-
-  withLines.drawLine({ x: p1.x, y: p1.y }, { x: p2.x, y: p1.y }, 3, 0, 255, 0)
-  withLines.drawLine({ x: p2.x, y: p1.y }, { x: p2.x, y: p2.y }, 3, 0, 255, 0)
-  withLines.drawLine({ x: p2.x, y: p2.y }, { x: p1.x, y: p2.y }, 3, 0, 255, 0)
-  withLines.drawLine({ x: p1.x, y: p2.y }, { x: p1.x, y: p1.y }, 3, 0, 255, 0)
-
-  fs.writeFileSync(`${baseDir}/with-lines.png`, withLines.toBuffer('png'))
-}
-
-export default {
-  upload,
-}
+export default { upload }
