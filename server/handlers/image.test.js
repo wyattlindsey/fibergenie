@@ -3,11 +3,7 @@ import fs from 'fs'
 import noop from 'lodash/noop'
 import sinon from 'sinon'
 
-import imageHandler, {
-  prepareDirectories,
-  processUpload,
-  UPLOADS_FOLDER,
-} from './image'
+import { UPLOADS_FOLDER } from './image'
 import Image from '../lib/image'
 
 const fileToUpload = {
@@ -17,18 +13,21 @@ const fileToUpload = {
 
 const pdfMimeType = { mimetype: 'application/pdf' }
 
+// fs stubs
 const mkdirSyncStub = sinon.stub(fs, 'mkdirSync')
 const readSync = sinon.stub(fs, 'readSync')
 const renameSyncStub = sinon.stub(fs, 'renameSync')
 const unlinkSyncStub = sinon.stub(fs, 'unlinkSync')
 const writeFileSyncStub = sinon.stub(fs, 'writeFileSync')
 
-const convertPDFStub = sinon.stub(Image, 'convertPDF').returns([{}, {}])
-const getDimensionsStub = sinon.stub(Image, 'getDimensions').returns(100, 100)
-const prepareStub = sinon.stub(Image, 'prepare').returns(UPLOADS_FOLDER)
-const resizeStub = sinon.stub(Image, 'resize').returns(UPLOADS_FOLDER)
-const saveCopyStub = sinon.stub(Image, 'saveCopy').returns(UPLOADS_FOLDER)
+// lib/images.js stubs
+const convertPDFStub = sinon.stub(Image, 'convertPDF').resolves([{}, {}])
+const getDimensionsStub = sinon.stub(Image, 'getDimensions').resolves(100, 100)
+const prepareStub = sinon.stub(Image, 'prepare').resolves(UPLOADS_FOLDER)
+const resizeStub = sinon.stub(Image, 'resize').resolves(UPLOADS_FOLDER)
+const saveCopyStub = sinon.stub(Image, 'saveCopy').resolves(UPLOADS_FOLDER)
 
+// Express stubs
 const response = {
   send: noop,
   status: noop,
@@ -64,12 +63,13 @@ describe('image upload', () => {
 
   it('responds with 500 status code when no image file is included in request', async () => {
     const request = {} // no `file` property
-    const handler = require('./image').default
-    await handler.upload(request, response)
+    const upload = require('./image').upload
+    await upload(request, response)
     expect(responseStatusStub.calledWith(500)).to.equal(true)
   })
 
   it('creates a new directory in the uploads folder using the provided id', () => {
+    const prepareDirectories = require('./image').prepareDirectories
     const res = prepareDirectories(fileToUpload.filename)
     expect(mkdirSyncStub.calledWith(fileToUpload.filename))
     expect(res).to.deep.equal({
@@ -79,24 +79,33 @@ describe('image upload', () => {
   })
 
   it('creates a page_1 subdirectory by default', () => {
+    const prepareDirectories = require('./image').prepareDirectories
     const res = prepareDirectories(fileToUpload.filename)
-    expect(mkdirSyncStub.calledWith(`${res.baseDirectory}/page_2`))
+    expect(mkdirSyncStub.calledWith(`${res.baseDirectory}/page_1`)).to.equal(
+      true
+    )
   })
 
   it('responds with a 500 status code if directories cannot be created', () => {
+    const prepareDirectories = require('./image').prepareDirectories
     mkdirSyncStub.throws()
     const res = prepareDirectories(fileToUpload.filename)
     expect(res.err).to.not.be.null
   })
 
   it('renames PDF files in the temp directory to include the .pdf extension', () => {
-    processUpload({ ...fileToUpload, ...pdfMimeType }, UPLOADS_FOLDER)
-    expect(
-      renameSyncStub.calledWith(
-        fileToUpload.path,
-        `${fileToUpload.filename}.pdf`
-      )
-    )
+    const processUpload = require('./image').processUpload
+    return processUpload(
+      { ...fileToUpload, ...pdfMimeType },
+      UPLOADS_FOLDER
+    ).then(() => {
+      expect(
+        renameSyncStub.calledWith(
+          fileToUpload.path,
+          `${fileToUpload.filename}.pdf`
+        )
+      ).to.equal(false)
+    })
   })
 
   it('calls PDF conversion method for the correct file type', () => {})
