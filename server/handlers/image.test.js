@@ -3,7 +3,8 @@ import fs from 'fs'
 import noop from 'lodash/noop'
 import sinon from 'sinon'
 
-import { UPLOADS_FOLDER } from './image'
+import imageHandler, { UPLOADS_FOLDER } from './image'
+import Chart from '../lib/chart'
 import Image from '../lib/image'
 
 const fileToUpload = {
@@ -27,6 +28,9 @@ const prepareStub = sinon.stub(Image, 'prepare').resolves(UPLOADS_FOLDER)
 const resizeStub = sinon.stub(Image, 'resize').resolves(UPLOADS_FOLDER)
 const saveCopyStub = sinon.stub(Image, 'saveCopy').resolves(UPLOADS_FOLDER)
 
+// lib/chart.js stubs
+const extractLinesStub = sinon.stub(Chart, 'extractLines').returns({})
+
 // Express stubs
 const response = {
   send: noop,
@@ -46,6 +50,7 @@ describe('image upload', () => {
     writeFileSyncStub.restore()
 
     convertPDFStub.restore()
+    extractLinesStub.restore()
   })
 
   beforeEach(() => {})
@@ -57,20 +62,20 @@ describe('image upload', () => {
     unlinkSyncStub.reset()
     writeFileSyncStub.reset()
 
+    extractLinesStub.reset()
+
     responseStatusStub.reset()
     responseSendStub.reset()
   })
 
   it('responds with 500 status code when no image file is included in request', async () => {
     const request = {} // no `file` property
-    const upload = require('./image').upload
-    await upload(request, response)
+    await imageHandler.upload(request, response)
     expect(responseStatusStub.calledWith(500)).to.equal(true)
   })
 
   it('creates a new directory in the uploads folder using the provided id', () => {
-    const prepareDirectories = require('./image').prepareDirectories
-    const res = prepareDirectories(fileToUpload.filename)
+    const res = imageHandler.prepareDirectories(fileToUpload.filename)
     expect(mkdirSyncStub.calledWith(fileToUpload.filename))
     expect(res).to.deep.equal({
       baseDirectory: `${UPLOADS_FOLDER}/${fileToUpload.filename}`,
@@ -79,36 +84,39 @@ describe('image upload', () => {
   })
 
   it('creates a page_1 subdirectory by default', () => {
-    const prepareDirectories = require('./image').prepareDirectories
-    const res = prepareDirectories(fileToUpload.filename)
+    const res = imageHandler.prepareDirectories(fileToUpload.filename)
     expect(mkdirSyncStub.calledWith(`${res.baseDirectory}/page_1`)).to.equal(
       true
     )
   })
 
   it('responds with a 500 status code if directories cannot be created', () => {
-    const prepareDirectories = require('./image').prepareDirectories
     mkdirSyncStub.throws()
-    const res = prepareDirectories(fileToUpload.filename)
+    const res = imageHandler.prepareDirectories(fileToUpload.filename)
     expect(res.err).to.not.be.null
   })
 
-  it('renames PDF files in the temp directory to include the .pdf extension', () => {
-    const processUpload = require('./image').processUpload
-    return processUpload(
+  it('renames PDF files in the temp directory to include the .pdf extension', async () => {
+    await imageHandler.processUpload(
       { ...fileToUpload, ...pdfMimeType },
       UPLOADS_FOLDER
-    ).then(() => {
-      expect(
-        renameSyncStub.calledWith(
-          fileToUpload.path,
-          `${fileToUpload.filename}.pdf`
-        )
-      ).to.equal(false)
-    })
+    )
+    expect(
+      renameSyncStub.calledWith(fileToUpload.path, `${fileToUpload.path}.pdf`)
+    ).to.equal(true)
   })
 
-  it('calls PDF conversion method for the correct file type', () => {})
+  it('calls PDF conversion method for the correct file type', async () => {
+    const pdf = { ...fileToUpload, ...pdfMimeType }
+    const nonPDF = fileToUpload
+
+    await imageHandler.processUpload(pdf, UPLOADS_FOLDER)
+    expect(convertPDFStub.called).to.equal(true)
+    convertPDFStub.reset()
+
+    await imageHandler.processUpload(nonPDF, UPLOADS_FOLDER)
+    expect(convertPDFStub.called).to.equal(false)
+  })
 
   it('creates multiple pages if multi-page document')
 

@@ -79,40 +79,29 @@ const processUpload = async (
       const pdfPath = `${sourcePath}.pdf`
       fs.renameSync(sourcePath, pdfPath)
 
-      console.log('past renameSync')
-
       const PDFs = await Image.convertPDF(
         pdfPath,
         convertedPath,
         TARGET_IMAGE_DIMS
       )
 
-      console.log('past convert PDF')
-
       // remove '.pdf' extension so upload() handler can delete it with the original filename
       fs.renameSync(pdfPath, sourcePath)
-
-      console.log('past 2nd renameSync')
 
       // process each page from the source PDF
       const processedPages = PDFs.map(async (pdf, i) => {
         // create new subdirectory for page if this is a multi-page PDF
         // note that `../page_1/` was already created
         const directoryForPage = `${destDir}/${PAGE_PREFIX}${i + 1}`
-        console.log('just entering', i)
 
         if (i > 0) {
           fs.mkdirSync(directoryForPage)
         }
 
-        console.log('past mkdirSync for ', i)
-
         return await processPage(pdf.path, directoryForPage)
       })
 
       const pages = await Promise.all(processedPages)
-
-      console.log('past Promise.all()')
 
       // remove temporary directory used for pdf conversion
       rimraf(convertedPath, noop)
@@ -167,6 +156,11 @@ const processPage = async (
   return results
 }
 
-export default { upload }
+export default {
+  prepareDirectories,
+  processUpload,
+  processPage,
+  upload,
+}
 
-export { prepareDirectories, processUpload, processPage, upload, UPLOADS_FOLDER }
+export { UPLOADS_FOLDER }
