@@ -16,7 +16,6 @@ const pdfMimeType = { mimetype: 'application/pdf' }
 
 // fs stubs
 const mkdirSyncStub = sinon.stub(fs, 'mkdirSync')
-const readSync = sinon.stub(fs, 'readSync')
 const renameSyncStub = sinon.stub(fs, 'renameSync')
 const unlinkSyncStub = sinon.stub(fs, 'unlinkSync')
 const writeFileSyncStub = sinon.stub(fs, 'writeFileSync')
@@ -58,7 +57,6 @@ describe('image upload', () => {
 
   after(() => {
     mkdirSyncStub.restore()
-    readSync.restore()
     renameSyncStub.restore()
     unlinkSyncStub.restore()
     writeFileSyncStub.restore()
@@ -85,7 +83,6 @@ describe('image upload', () => {
 
   afterEach(() => {
     mkdirSyncStub.reset()
-    readSync.reset()
     renameSyncStub.reset()
     unlinkSyncStub.reset()
     writeFileSyncStub.reset()

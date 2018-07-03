@@ -240,7 +240,7 @@ const extractLines = (
     minSegments: 8,
   })
 
-  if (horizontalLines.length === 0 || verticalLines.length === 0) return false
+  if (horizontalLines.length === 0 || verticalLines.length === 0) return
 
   // find the mean endpoints for each set of lines
   const meanMinXEndpoint = horizontalLines
@@ -383,7 +383,7 @@ const resizeChartLines = (
   targetDimensions: ImageDimensions
 ): ChartData => {
   const { boundingBox, rowPositions } = chartData
-  if (!boundingBox || !rowPositions) return null
+  if (!boundingBox || !rowPositions) return
 
   const ratio = targetDimensions.width / sourceDimensions.width
 
