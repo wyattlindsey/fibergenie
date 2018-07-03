@@ -50,5 +50,9 @@
     "mocha": "^5.2.0",
     "nodemon": "^1.17.5",
     "sinon": "^6.0.0"
+  },
+  "babel": {
+    "presets": ["env", "flow", "stage-2"],
+    "sourceMaps": "both"
   }
 }

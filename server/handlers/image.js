@@ -30,15 +30,15 @@ const upload = async (req: Request, res: $Response): Promise<void> => {
     res.status(500).send('Error creating directory')
   } else {
     try {
-      // delete temp file
-      fs.unlinkSync(tmpFilePath)
-
       const chartData = await processUpload(req.file, baseDirectory)
       if (!chartData) {
         res.status(500).send(errorMsg)
       } else {
         res.status(201).send(chartData)
       }
+
+      // delete temp file
+      fs.unlinkSync(tmpFilePath)
     } catch (e) {
       console.error(e)
       res.status(500).send(errorMsg)

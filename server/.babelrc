@@ -1,4 +1,0 @@
-{
-  "presets": ["env", "flow", "stage-2"],
-  "sourceMaps": "both"
-}

@@ -88,6 +88,7 @@ const resize = (
 }
 
 const saveCopy = (sourcePath: string, baseDir: string): Promise<?string> => {
+    console.log('sourcePath', sourcePath)
   return new Promise(resolve => {
     gm(sourcePath)
       .setFormat('png')
