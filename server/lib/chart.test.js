@@ -39,4 +39,18 @@ describe('extractLines()', () => {
     )
     expect(true).to.equal(true)
   })
+
+  it('categorizes horizontal and vertical segments', () => {})
+
+  it('consolidates co linear segments based on tolerance', () => {})
+
+  it('resizes chart data to fit original image', () => {})
+
+  it('filters line candidates to those with lots of segments or unusually long segments', () => {})
+
+  it('find the average delta between chart lines', () => {})
+
+  it('uses average delta and perpendicular lines to determine if last line should be added or removed', () => {})
+
+  it('draws lines on the chart in development mode', () => {})
 })
