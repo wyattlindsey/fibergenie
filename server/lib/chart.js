@@ -429,5 +429,6 @@ const drawLines = (
 
 export default {
   drawLines,
+  extractDirectionalLines,
   extractLines,
 }
