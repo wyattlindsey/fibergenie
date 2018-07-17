@@ -260,7 +260,16 @@ const verticalLines = [
   },
 ]
 
+const chartData = {
+  boundingBox: {
+    p1: { x: 0, y: 0 },
+    p2: { x: 50, y: 40 },
+  },
+  rowPositions: [0, 10, 20, 30, 40],
+}
+
 export {
+  chartData,
   horizontalLines,
   horizontalSegments,
   verticalLines,

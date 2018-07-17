@@ -431,4 +431,5 @@ export default {
   drawLines,
   extractDirectionalLines,
   extractLines,
+  resizeChartLines,
 }

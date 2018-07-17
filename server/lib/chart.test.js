@@ -6,6 +6,7 @@ import dv from 'ndv'
 
 import Chart from './chart'
 import {
+  chartData,
   horizontalLines,
   horizontalSegments,
   verticalLines,
@@ -159,19 +160,108 @@ describe('extractLines()', () => {
     ]
 
     const res = Chart.extractDirectionalLines(unevenSegments, 'x', 100, {
-      maxShift: 1
+      maxShift: 1,
     })
 
     expect(res.lines).to.deep.equal(expectedLines)
   })
 
-  it('resizes chart data to fit original image', () => {})
+  it('resizes chart data to fit original image', () => {
+    const doubleSizeChart = {
+      boundingBox: {
+        p1: {
+          x: chartData.boundingBox.p1.x * 2,
+          y: chartData.boundingBox.p1.y * 2,
+        },
+        p2: {
+          x: chartData.boundingBox.p2.x * 2,
+          y: chartData.boundingBox.p2.y * 2,
+        },
+      },
+      rowPositions: chartData.rowPositions.map(v => v * 2),
+    }
 
-  it('filters line candidates to those with lots of segments or unusually long segments', () => {})
+    const resizedChart = Chart.resizeChartLines(
+      doubleSizeChart,
+      { height: 200, width: 200 },
+      { height: 100, width: 100 }
+    )
 
-  it('find the average delta between chart lines', () => {})
+    expect(resizedChart).to.deep.equal(chartData)
+  })
 
-  it('uses average delta and perpendicular lines to determine if last line should be added or removed', () => {})
+  it('filters line candidates to those with lots of segments or unusually long segments', () => {
+    const extraNoise = [
+      {
+        p1: { x: 10, y: 15 },
+        p2: { x: 20, y: 15 },
+      },
+      {
+        p1: { x: 20, y: 25 },
+        p2: { x: 30, y: 25 },
+      },
+    ]
 
-  it('draws lines on the chart in development mode', () => {})
+    const res = Chart.extractDirectionalLines(
+      [...horizontalSegments, ...extraNoise],
+      'x',
+      100
+    )
+
+    expect(res.lines).to.deep.equal(horizontalLines)
+  })
+
+  it('finds the average delta between chart lines', () => {
+    const withJitteredY = [...horizontalSegments]
+
+    withJitteredY.splice(
+      5,
+      10,
+      // replacement for 2nd line
+      {
+        p1: { x: 0, y: 9 },
+        p2: { x: 10, y: 9 },
+      },
+      {
+        p1: { x: 10, y: 9 },
+        p2: { x: 20, y: 9 },
+      },
+      {
+        p1: { x: 20, y: 9 },
+        p2: { x: 30, y: 9 },
+      },
+      {
+        p1: { x: 30, y: 9 },
+        p2: { x: 40, y: 9 },
+      },
+      {
+        p1: { x: 40, y: 9 },
+        p2: { x: 50, y: 9 },
+      },
+      // replacement for 3rd line
+      {
+        p1: { x: 0, y: 19 },
+        p2: { x: 10, y: 19 },
+      },
+      {
+        p1: { x: 10, y: 19 },
+        p2: { x: 20, y: 19 },
+      },
+      {
+        p1: { x: 20, y: 19 },
+        p2: { x: 30, y: 19 },
+      },
+      {
+        p1: { x: 30, y: 19 },
+        p2: { x: 40, y: 19 },
+      },
+      {
+        p1: { x: 40, y: 19 },
+        p2: { x: 50, y: 19 },
+      }
+    )
+
+    const res = Chart.extractDirectionalLines(withJitteredY, 'x', 100)
+    expect(res.averageDistance).to.equal(10)
+  })
 })
