@@ -1,6 +1,7 @@
 node_modules/
 .idea/
 client/dist/
+server/dist/
 server/public/
 yarn-error.log
 .yarnclean
