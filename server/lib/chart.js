@@ -416,13 +416,13 @@ const drawLines = (
   const { p1, p2 } = chartData.boundingBox
 
   chartData.rowPositions.forEach(y => {
-    withLines.drawLine({ x: p1.x, y }, { x: p2.x, y }, 2, 255, 0, 0)
+    withLines.drawLine({ x: p1.x, y }, { x: p2.x, y }, 2, 206, 28, 85)
   })
 
-  withLines.drawLine({ x: p1.x, y: p1.y }, { x: p2.x, y: p1.y }, 3, 0, 255, 0)
-  withLines.drawLine({ x: p2.x, y: p1.y }, { x: p2.x, y: p2.y }, 3, 0, 255, 0)
-  withLines.drawLine({ x: p2.x, y: p2.y }, { x: p1.x, y: p2.y }, 3, 0, 255, 0)
-  withLines.drawLine({ x: p1.x, y: p2.y }, { x: p1.x, y: p1.y }, 3, 0, 255, 0)
+  withLines.drawLine({ x: p1.x, y: p1.y }, { x: p2.x, y: p1.y }, 3, 28, 206, 99)
+  withLines.drawLine({ x: p2.x, y: p1.y }, { x: p2.x, y: p2.y }, 3, 28, 206, 99)
+  withLines.drawLine({ x: p2.x, y: p2.y }, { x: p1.x, y: p2.y }, 3, 28, 206, 99)
+  withLines.drawLine({ x: p1.x, y: p2.y }, { x: p1.x, y: p1.y }, 3, 28, 206, 99)
 
   fs.writeFileSync(`${baseDir}/with-lines.png`, withLines.toBuffer('png'))
 }
