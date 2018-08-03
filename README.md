@@ -1,7 +1,7 @@
 FiberGenie
 =============
 
-FiberGenie is a tool that helps knitters keep track of their current row and stitch. Other stitch counter apps abound, but only FiberGenie overlays the counter directly on your pattern. Upload an image file or snap a picture from your favorite knitting book. FiberGenie locates the rows and highlights the one you're working on. Voice control ensures your hands stay where you want them: on your needles.
+FiberGenie is a tool that helps knitters keep track of their current row and stitch. Other stitch counter apps abound, but only FiberGenie overlays the counter directly on your pattern. Upload an image file or snap a picture from your favorite knitting book. FiberGenie locates the rows and highlights the one you're working on. Voice control ensures your hands stay where you want them: on your knitting.
 
 ### Current features
 * supports most image formats, including multi-page PDFs
@@ -62,9 +62,9 @@ From the `fibergenie/server/` directory, launch the application with Nodemon, Fl
 yarn start:dev
 ```
 
-`POST` a request to `http://localhost:3000/image` using a client like Postman using `form-data` for the body format. Set a `chart` key and choose your [test file](todo) for the value.
+`POST` a request to `http://localhost:3000/image` using a client like Postman using `form-data` for the body format. Set a `chart` key and choose your [test file](https://github.com/wyattlindsey/fibergenie/blob/master/server/test/fixtures/images/beechleaf1.png) for the value.
 
-![Postman settings](todo)
+![Postman settings](https://github.com/wyattlindsey/fibergenie/blob/master/images/postman_settings.png)
 
 **Testing**
 
