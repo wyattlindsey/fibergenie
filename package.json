@@ -4,7 +4,7 @@
   "description": "tools for knitters",
   "main": "index.js",
   "scripts": {
-    "start": "cd client && npm start && cd .. & npm start"
+    "start": "cd client/mobile && npm start && cd ../../server & npm start"
   },
   "repository": {
     "type": "git",
