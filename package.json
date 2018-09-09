@@ -15,5 +15,8 @@
   "bugs": {
     "url": "https://github.com/wyattlindsey/fibergenie/issues"
   },
-  "homepage": "https://github.com/wyattlindsey/fibergenie#readme"
+  "homepage": "https://github.com/wyattlindsey/fibergenie#readme",
+  "dependencies": {
+    "react-native-navigation": "^2.0.2538"
+  }
 }
