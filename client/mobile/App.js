@@ -1,8 +1,14 @@
 import React from 'react'
-import Chart from './src/views/Chart'
+import { View } from 'react-native'
+import Chart from 'views/Chart'
+import Styles from './styles'
 
 export default class App extends React.Component {
   render() {
-    return <Chart />
+    return (
+      <View style={Styles.appContainer}>
+        <Chart />
+      </View>
+    )
   }
 }
