@@ -3,18 +3,18 @@ import { Text, View } from 'react-native'
 
 import flexbox from 'styles/flexbox'
 
-class Chart extends React.Component {
+class Upload extends React.Component {
   static navigationOptions = {
-    title: 'Chart',
+    title: 'Upload',
   }
 
   render() {
     return (
       <View style={flexbox.center}>
-        <Text>Chart</Text>
+        <Text>Upload</Text>
       </View>
     )
   }
 }
 
-export default Chart
+export default Upload

@@ -3,18 +3,18 @@ import { Text, View } from 'react-native'
 
 import flexbox from 'styles/flexbox'
 
-class Chart extends React.Component {
+class Registration extends React.Component {
   static navigationOptions = {
-    title: 'Chart',
+    title: 'Registration',
   }
 
   render() {
     return (
       <View style={flexbox.center}>
-        <Text>Chart</Text>
+        <Text>Registration</Text>
       </View>
     )
   }
 }
 
-export default Chart
+export default Registration

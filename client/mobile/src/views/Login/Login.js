@@ -3,18 +3,18 @@ import { Text, View } from 'react-native'
 
 import flexbox from 'styles/flexbox'
 
-class Chart extends React.Component {
+class Login extends React.Component {
   static navigationOptions = {
-    title: 'Chart',
+    title: 'Login',
   }
 
   render() {
     return (
       <View style={flexbox.center}>
-        <Text>Chart</Text>
+        <Text>Login</Text>
       </View>
     )
   }
 }
 
-export default Chart
+export default Login

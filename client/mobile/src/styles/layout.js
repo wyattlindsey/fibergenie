@@ -1,12 +1,12 @@
 import { StyleSheet } from 'react-native'
 import Dimensions from 'constants/dimensions'
 
-const appContainer = {
+const fullHeight = {
   height: Dimensions.window.fullHeight,
 }
 
 const styles = StyleSheet.create({
-  appContainer,
+  fullHeight,
 })
 
 export default styles
