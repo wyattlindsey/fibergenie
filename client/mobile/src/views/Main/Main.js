@@ -1,5 +1,5 @@
 import React from 'react'
-import { Button, Text, View } from 'react-native'
+import { Button, View } from 'react-native'
 
 import flexbox from 'styles/flexbox'
 
@@ -24,12 +24,11 @@ class Main extends React.Component {
   }
 
   handleButtonPress = target => () => {
+    const { navigation: { navigate } } = this.props
     navigate(SCREENS[target])
   }
 
   render() {
-    const { navigate } = this.props.navigation
-
     return (
       <View style={flexbox.center}>
         {BUTTONS.map(({ id, displayName, target }) => (
