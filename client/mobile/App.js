@@ -1,23 +1,42 @@
-import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+// @flow
 
-export default class App extends React.Component {
+import React from 'react'
+import { View } from 'react-native'
+import { createStackNavigator } from 'react-navigation'
+
+import CameraRoll from 'views/CameraRoll'
+import Chart from 'views/Chart'
+import Login from 'views/Login'
+import Main from 'views/Main'
+import Registration from 'views/Registration'
+import Upload from 'views/Upload'
+
+import LayoutStyles from 'styles/layout'
+
+import SCREENS from 'constants/screens'
+
+const Screens = createStackNavigator(
+  {
+    [SCREENS.CAMERA_ROLL]: { screen: CameraRoll },
+    [SCREENS.CHART]: { screen: Chart },
+    [SCREENS.LOGIN]: { screen: Login },
+    [SCREENS.MAIN]: { screen: Main },
+    [SCREENS.REGISTRATION]: { screen: Registration },
+    [SCREENS.UPLOAD]: { screen: Upload },
+  },
+  {
+    initialRouteName: SCREENS.MAIN,
+  }
+)
+
+class App extends React.Component <*> {
   render() {
     return (
-      <View style={styles.container}>
-        <Text>Open up App.js to start working on your app!</Text>
-        <Text>Changes you make will automatically reload.</Text>
-        <Text>Shake your phone to open the developer menu.</Text>
+      <View style={LayoutStyles.fullHeight}>
+        <Screens />
       </View>
-    );
+    )
   }
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});
+export default App

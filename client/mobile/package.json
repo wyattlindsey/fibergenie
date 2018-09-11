@@ -13,8 +13,22 @@
   },
   "homepage": "https://github.com/wyattlindsey/fibergenie#readme",
   "devDependencies": {
-    "react-native-scripts": "1.14.0",
+    "babel-core": "^6.26.3",
+    "babel-eslint": "^9.0.0",
+    "babel-preset-airbnb": "^2.6.0",
+    "babel-preset-flow": "^6.23.0",
+    "babel-preset-react-native": "^4.0.1",
+    "eslint": "^5.5.0",
+    "eslint-config-airbnb": "^17.1.0",
+    "eslint-plugin-flowtype": "^2.50.0",
+    "eslint-plugin-import": "^2.14.0",
+    "eslint-plugin-jsx-a11y": "^6.1.1",
+    "eslint-plugin-react": "^7.11.1",
+    "eslint-watch": "^4.0.2",
+    "flow-bin": "^0.80.0",
+    "flow-watch": "^1.1.3",
     "jest-expo": "~27.0.0",
+    "react-native-scripts": "1.14.0",
     "react-test-renderer": "16.3.1"
   },
   "main": "./node_modules/react-native-scripts/build/bin/crna-entry.js",
@@ -23,14 +37,20 @@
     "eject": "react-native-scripts eject",
     "android": "react-native-scripts android",
     "ios": "react-native-scripts ios",
-    "test": "jest"
+    "test": "jest",
+    "lint": "esw --ignore-path .eslintignore './**/*.js'",
+    "lint:watch": "esw -w --changed --ignore-path .eslintignore './**/*.js'",
+    "flow": "flow",
+    "flow:watch": "flow-watch"
   },
   "jest": {
     "preset": "jest-expo"
   },
   "dependencies": {
+    "dot-prop": "^4.2.0",
     "expo": "^27.0.1",
     "react": "16.3.1",
-    "react-native": "~0.55.2"
+    "react-native": "~0.55.2",
+    "react-navigation": "^2.13.0"
   }
 }
