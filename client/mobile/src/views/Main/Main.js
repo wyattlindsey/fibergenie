@@ -1,3 +1,5 @@
+// @flow
+
 import React from 'react'
 import { Button, View } from 'react-native'
 
@@ -5,7 +7,13 @@ import flexbox from 'styles/flexbox'
 
 import SCREENS from 'constants/screens'
 
-const BUTTONS = [
+type ButtonData = {
+  id: $Values<SCREENS>,
+  displayName: string,
+  target: $Values<SCREENS>,
+}
+
+const BUTTONS: ButtonData[] = [
   {
     id: SCREENS.CAMERA_ROLL,
     displayName: 'Photo Library',
@@ -18,13 +26,17 @@ const BUTTONS = [
   },
 ]
 
-class Main extends React.Component {
+type Props = {
+  navigation: { [any]: any },
+}
+
+class Main extends React.Component<Props> {
   static navigationOptions = {
     title: 'Home',
   }
 
-  handleButtonPress = target => () => {
-    const { navigation: { navigate } } = this.props
+  handleButtonPress = (target: $Values<SCREENS>) => (): void => {
+    const { navigation: { navigate } } = this.props // eslint-disable-line react/prop-types
     navigate(SCREENS[target])
   }
 

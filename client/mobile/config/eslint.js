@@ -22,5 +22,6 @@ module.exports = {
     describe: 0,
     module: 0,
     navigator: 0,
+    $Values: 0,
   },
 }

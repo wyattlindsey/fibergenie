@@ -1,3 +1,5 @@
+// @flow
+
 import React from 'react'
 import { View } from 'react-native'
 import { createStackNavigator } from 'react-navigation'
@@ -27,7 +29,7 @@ const Screens = createStackNavigator(
   }
 )
 
-class App extends React.Component {
+class App extends React.Component <*> {
   render() {
     return (
       <View style={LayoutStyles.fullHeight}>
