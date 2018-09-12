@@ -8,9 +8,9 @@ import flexbox from 'styles/flexbox'
 import SCREENS from 'constants/screens'
 
 type ButtonData = {
-  id: $Values<SCREENS>,
+  id: $Values<typeof SCREENS>,
   displayName: string,
-  target: $Values<SCREENS>,
+  target: $Values<typeof SCREENS>,
 }
 
 const BUTTONS: ButtonData[] = [
@@ -35,7 +35,7 @@ class Main extends React.Component<Props> {
     title: 'Home',
   }
 
-  handleButtonPress = (target: $Values<SCREENS>) => (): void => {
+  handleButtonPress = (target: $Values<typeof SCREENS>) => (): void => {
     const { navigation: { navigate } } = this.props // eslint-disable-line react/prop-types
     navigate(SCREENS[target])
   }
