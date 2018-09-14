@@ -1,15 +1,25 @@
 // @flow
 import React from 'react'
-import { Image, Text, View } from 'react-native'
+import { Button, Image, Text, View } from 'react-native'
 
 import dotProp from 'dot-prop'
 
 import Dimensions from 'constants/dimensions'
 
-class SingleImage extends React.Component<*> {
+import type { CameraImage } from 'types/image'
+
+type Props = {
+  navigation: { [string]: any },
+}
+
+class SingleImage extends React.Component<Props> {
+  handleAddButtonPress = (image: Props) => (): Promise<void> => {
+    console.log('press: ', image)
+  }
+
   render() {
     const { navigation } = this.props
-    const image = navigation.getParam('image')
+    const image: CameraImage = navigation.getParam('image')
     const originalWidth = dotProp.get(image, 'width')
     const originalHeight = dotProp.get(image, 'height')
     const uri = dotProp.get(image, 'uri')
@@ -29,6 +39,7 @@ class SingleImage extends React.Component<*> {
 
     return (
       <View>
+        <Button title="Add to library" onPress={this.handleAddButtonPress(image)} />
         <Image source={source} style={style} />
       </View>
     )

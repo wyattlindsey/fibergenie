@@ -14,13 +14,15 @@ import ActivityIndicator from 'components/ActivityIndicator'
 import Dimensions from 'constants/dimensions'
 import SCREENS from 'constants/screens'
 
+import type { CameraImage } from 'types/image'
+
 type Props = {
   navigation: { [any]: any },
 }
 
 type State = {
   loading: boolean,
-  photos: any[], // todo
+  photos: CameraImage[],
 }
 
 class CameraRoll extends React.Component<Props, State> {
@@ -48,7 +50,7 @@ class CameraRoll extends React.Component<Props, State> {
     }
   }
 
-  handleImagePress = (image: { [string]: any }) => (): void => {
+  handleImagePress = (image: CameraImage) => (): void => {
     const { navigation: { navigate } } = this.props // eslint-disable-line react/prop-types
     navigate(SCREENS.SINGLE_IMAGE, { image })
   }
@@ -68,7 +70,8 @@ class CameraRoll extends React.Component<Props, State> {
               const originalWidth = dotProp.get(image, 'width')
               const originalHeight = dotProp.get(image, 'height')
 
-              if (!image || !uri || !originalWidth || !originalHeight) return null
+              if (!image || !uri || !originalWidth || !originalHeight)
+                return null
 
               const aspectRatio = originalWidth / originalHeight
 
