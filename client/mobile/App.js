@@ -9,6 +9,7 @@ import Chart from 'views/Chart'
 import Login from 'views/Login'
 import Main from 'views/Main'
 import Registration from 'views/Registration'
+import SingleImage from 'views/SingleImage'
 import Upload from 'views/Upload'
 
 import LayoutStyles from 'styles/layout'
@@ -22,6 +23,7 @@ const Screens = createStackNavigator(
     [SCREENS.LOGIN]: { screen: Login },
     [SCREENS.MAIN]: { screen: Main },
     [SCREENS.REGISTRATION]: { screen: Registration },
+    [SCREENS.SINGLE_IMAGE]: { screen: SingleImage },
     [SCREENS.UPLOAD]: { screen: Upload },
   },
   {

@@ -1,21 +1,28 @@
 // @flow
-
 import React from 'react'
 import {
   CameraRoll as ReactNativeCameraRoll,
   Image,
   ScrollView,
+  TouchableHighlight,
   View,
 } from 'react-native'
 
 import dotProp from 'dot-prop'
+
+import ActivityIndicator from 'components/ActivityIndicator'
+import SCREENS from 'constants/screens'
+
+type Props = {
+  navigation: { [any]: any },
+}
 
 type State = {
   loading: boolean,
   photos: any[], // todo
 }
 
-class CameraRoll extends React.Component<*, State> {
+class CameraRoll extends React.Component<Props, State> {
   static navigationOptions = {
     title: 'Photo Library',
   }
@@ -40,30 +47,42 @@ class CameraRoll extends React.Component<*, State> {
     }
   }
 
+  handleImagePress = (image: { [string]: any }) => (): void => {
+    const { navigation: { navigate } } = this.props // eslint-disable-line react/prop-types
+    navigate(SCREENS.SINGLE_IMAGE, { image })
+  }
+
   render() {
     const { loading, photos } = this.state
 
     return (
       <View>
-        <ScrollView>
-          {photos.map(p => {
-            const uri = dotProp.get(p, 'node.image.uri')
-            const source = {
-              uri,
-            }
-            return (
-              <Image
-                key={uri}
-                source={source}
-                style={{
-                  width: 300,
-                  minHeight: 100,
-                  flexShrink: 0,
-                }}
-              />
-            )
-          })}
-        </ScrollView>
+        {loading ? (
+          <ActivityIndicator />
+        ) : (
+          <ScrollView>
+            {photos.map(p => {
+              const image = dotProp.get(p, 'node.image', {})
+              const uri = dotProp.get(image, 'uri', '')
+              const source = { uri }
+              return (
+                <TouchableHighlight
+                  key={uri}
+                  onPress={this.handleImagePress(image)}
+                >
+                  <Image
+                    source={source}
+                    style={{
+                      width: 300,
+                      minHeight: 100,
+                      flexShrink: 0,
+                    }}
+                  />
+                </TouchableHighlight>
+              )
+            })}
+          </ScrollView>
+        )}
       </View>
     )
   }
