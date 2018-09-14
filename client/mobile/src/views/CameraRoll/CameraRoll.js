@@ -11,6 +11,7 @@ import {
 import dotProp from 'dot-prop'
 
 import ActivityIndicator from 'components/ActivityIndicator'
+import Dimensions from 'constants/dimensions'
 import SCREENS from 'constants/screens'
 
 type Props = {
@@ -62,22 +63,30 @@ class CameraRoll extends React.Component<Props, State> {
         ) : (
           <ScrollView>
             {photos.map(p => {
-              const image = dotProp.get(p, 'node.image', {})
-              const uri = dotProp.get(image, 'uri', '')
+              const image = dotProp.get(p, 'node.image')
+              const uri = dotProp.get(image, 'uri')
+              const originalWidth = dotProp.get(image, 'width')
+              const originalHeight = dotProp.get(image, 'height')
+
+              if (!image || !uri || !originalWidth || !originalHeight) return null
+
+              const aspectRatio = originalWidth / originalHeight
+
+              const width = Dimensions.window.fullWidth
+              const height = width / aspectRatio
+              const style = {
+                height,
+                width,
+              }
+
               const source = { uri }
+
               return (
                 <TouchableHighlight
                   key={uri}
                   onPress={this.handleImagePress(image)}
                 >
-                  <Image
-                    source={source}
-                    style={{
-                      width: 300,
-                      minHeight: 100,
-                      flexShrink: 0,
-                    }}
-                  />
+                  <Image source={source} style={style} />
                 </TouchableHighlight>
               )
             })}
