@@ -1,3 +1,5 @@
+// @flow
+
 const SCREENS = {
   CAMERA_ROLL: 'CAMERA_ROLL',
   CHART: 'CHART',

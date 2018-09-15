@@ -36,9 +36,10 @@ class SingleImage extends React.Component<Props, State> {
     const { node: { image: { filename: name, uri } } } = image
 
     const formData = new FormData()
+    const id = cuid()
 
     formData.append('chart', {
-      filename: cuid(),
+      filename: id,
       name,
       uri,
     })
