@@ -53,7 +53,6 @@ class CameraRoll extends React.Component<Props, State> {
   handleImagePress = (image: CameraImage) => (): void => {
     const { navigation: { navigate } } = this.props // eslint-disable-line react/prop-types
     navigate({
-      key: SCREENS.SINGLE_IMAGE,
       params: { image },
       routeName: SCREENS.SINGLE_IMAGE,
     })

@@ -69,18 +69,21 @@ class SingleImage extends React.Component<Props, State> {
 
   navigateToChart(chartData: ChartData): void {
     const { navigation } = this.props // eslint-disable-line react/prop-types
+
     navigation.dispatch(
-      StackActions.replace({
-        action: NavigationActions.navigate({ navigateTo: SCREENS.CHART }),
-        key: SCREENS.CAMERA_ROLL,
-        routeName: SCREENS.CHART,
+      StackActions.reset({
+        actions: [
+          NavigationActions.navigate({
+            routeName: SCREENS.CHART_LIBRARY,
+          }),
+          NavigationActions.navigate({
+            routeName: SCREENS.CHART,
+            params: { chartData },
+          }),
+        ],
+        index: 1,
       })
     )
-    // navigation.navigate({
-    //   key: SCREENS.CHART,
-    //   params: { chartData },
-    //   routeName: SCREENS.CHART,
-    // })
   }
 
   render() {

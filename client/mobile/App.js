@@ -6,6 +6,7 @@ import { createStackNavigator } from 'react-navigation'
 
 import CameraRoll from 'views/CameraRoll'
 import Chart from 'views/Chart'
+import ChartLibrary from 'views/ChartLibrary'
 import Login from 'views/Login'
 import Main from 'views/Main'
 import Registration from 'views/Registration'
@@ -20,6 +21,7 @@ const Screens = createStackNavigator(
   {
     [SCREENS.CAMERA_ROLL]: { screen: CameraRoll },
     [SCREENS.CHART]: { screen: Chart },
+    [SCREENS.CHART_LIBRARY]: { screen: ChartLibrary },
     [SCREENS.LOGIN]: { screen: Login },
     [SCREENS.MAIN]: { screen: Main },
     [SCREENS.REGISTRATION]: { screen: Registration },
@@ -31,7 +33,7 @@ const Screens = createStackNavigator(
   }
 )
 
-class App extends React.Component <*> {
+class App extends React.Component<*> {
   render() {
     return (
       <View style={LayoutStyles.fullHeight}>
