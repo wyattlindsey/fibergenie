@@ -5,12 +5,12 @@ import fs from 'fs'
 import noop from 'lodash/noop'
 import rimraf from 'rimraf'
 
-import Image from '../lib/image'
-import Chart from '../lib/chart'
+import Image from 'lib/image'
+import Chart from 'lib/chart'
 
 import type { $Request, $Response } from 'express'
-import type { ChartData } from '../types/chart'
-import type { ImageDimensions } from '../types/image'
+import type { ChartData } from 'types/chart'
+import type { ImageDimensions } from 'types/image'
 
 type Request = $Request & { file: any }
 
@@ -22,8 +22,6 @@ const upload = async (req: Request, res: $Response): Promise<void> => {
   const errorMsg = 'Error processing file'
 
   const fileId = dotProp.get(req, 'file.filename')
-  console.log('fileId: ', fileId)
-  console.log('request: ', req)
   const tmpFilePath = dotProp.get(req, 'file.path')
 
   const { baseDirectory, err } = prepareDirectories(fileId)

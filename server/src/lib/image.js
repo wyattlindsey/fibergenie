@@ -5,7 +5,7 @@ import fs from 'fs'
 import gm from 'gm'
 import PDFConverter from 'pdf2pic'
 
-import { ImageDimensions } from '../types/image'
+import { ImageDimensions } from 'types/image'
 
 const convertPDF = (
   sourcePath: string,

@@ -1,28 +1,38 @@
-export type Axis = 'x' | 'y'
+type Axis = 'x' | 'y'
 
-export type Coord = {
+type Coord = {
   x: number,
   y: number,
 }
 
-export type Line = {
+type Line = {
   p1: Coord,
   p2: Coord,
 }
 
-export type SegmentMap = {
+type SegmentMap = {
   [id: number]: Line[],
   totalLength: number,
 }
 
-export type BoundingBox = {
+type BoundingBox = {
   p1: Coord,
   p2: Coord,
 }
 
-export type RowPositions = number[]
+type RowPositions = number[]
 
-export type ChartData = {
+type ChartData = {
   boundingBox: BoundingBox,
   rowPositions: RowPositions,
+}
+
+export type {
+  Axis,
+  Coord,
+  Line,
+  SegmentMap,
+  BoundingBox,
+  RowPositions,
+  ChartData,
 }

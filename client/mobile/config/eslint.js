@@ -11,11 +11,13 @@ module.exports = {
     'react/jsx-filename-extension': ['off'],
     'linebreak-style': ['off'],
     'no-undef': ['error'],
+    'object-curly-newline': ['off'],
     'react/sort-comp': ['off'],
     'react/prefer-stateless-function': ['off'],
     semi: ['off'],
     'import/no-unresolved': ['off'],
     'comma-dangle': ['error', 'always-multiline'],
+    'no-console': ['warn', { allow: ['error'] }],
   },
   globals: {
     it: 0,

@@ -9,8 +9,8 @@ import type {
   Line,
   RowPositions,
   SegmentMap,
-} from '../types/chart'
-import type { ImageDimensions } from '../types/image'
+} from 'types/chart'
+import type { ImageDimensions } from 'types/image'
 
 type LineExtractionOptions = {
   maxSkew: number,

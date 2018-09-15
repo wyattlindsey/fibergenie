@@ -73,8 +73,9 @@ class CameraRoll extends React.Component<Props, State> {
               const originalWidth = dotProp.get(image, 'width')
               const originalHeight = dotProp.get(image, 'height')
 
-              if (!image || !uri || !originalWidth || !originalHeight)
+              if (!image || !uri || !originalWidth || !originalHeight) {
                 return null
+              }
 
               const aspectRatio = originalWidth / originalHeight
 

@@ -1,6 +1,6 @@
 // @flow
 import React from 'react'
-import { Button, Image, Text, View } from 'react-native'
+import { Button, Image, View } from 'react-native'
 import Axios from 'axios'
 import { NavigationActions, StackActions } from 'react-navigation'
 
@@ -24,6 +24,10 @@ type State = {
 }
 
 class SingleImage extends React.Component<Props, State> {
+  static navigationOptions = {
+    title: 'Chart Library',
+  }
+
   state = {
     loading: false,
   }

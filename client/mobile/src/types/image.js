@@ -1,13 +1,6 @@
-type CameraImage = {
-  node: CameraImageNode,
-}
-
-type CameraImageNode = {
-  group_name: string,
-  image: CameraNodeImage,
-  location: { [string]: any },
-  timestamp: string,
-  type: string,
+type ImageDimensions = {
+  height: number,
+  width: number,
 }
 
 type CameraNodeImage = {
@@ -19,9 +12,16 @@ type CameraNodeImage = {
   uri: string,
 }
 
-export type ImageDimensions = {
-  height: number,
-  width: number,
+type CameraImageNode = {
+  group_name: string,
+  image: CameraNodeImage,
+  location: {[string]: any},
+  timestamp: string,
+  type: string,
 }
 
-export default { CameraImage, ImageDimensions }
+type CameraImage = {
+  node: CameraImageNode,
+}
+
+export type { CameraImage, ImageDimensions }
