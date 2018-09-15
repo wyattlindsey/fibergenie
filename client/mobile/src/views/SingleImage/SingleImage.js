@@ -7,28 +7,38 @@ import dotProp from 'dot-prop'
 
 import Dimensions from 'constants/dimensions'
 
+import ActivityIndicator from 'components/ActivityIndicator'
+
 import type { CameraImage } from 'types/image'
 
 type Props = {
   navigation: { [string]: any },
 }
 
-class SingleImage extends React.Component<Props> {
+type State = {
+  loading: boolean,
+}
+
+class SingleImage extends React.Component<Props, State> {
+  state = {
+    loading: false,
+  }
+
   handleAddButtonPress = (image: Props) => async (): Promise<void> => {
+    const { node: { image: { filename: name, uri } } } = image
+
+    const formData = new FormData()
+
+    formData.append('chart', {
+      filename: cuid(),
+      name,
+      uri,
+    })
+
+    this.setState({ loading: true })
+
     try {
-      console.log('image', image)
-      const { node: { image: { filename: name, uri } } } = image
-
-      const formData = new FormData()
-
-      formData.append('chart', {
-        uri,
-        name: 'foobar',
-        filename: cuid(),
-        type: 'image/jpeg', // todo other types
-      })
-
-      const { res, err } = await fetch('http://localhost:3000/image', {
+      const response = await fetch('http://localhost:3000/image', {
         method: 'POST',
         header: {
           Accept: 'application/json',
@@ -36,13 +46,17 @@ class SingleImage extends React.Component<Props> {
         },
         body: formData,
       })
+      console.log(response)
+      this.setState({ loading: false })
     } catch (e) {
       console.error(e)
+      this.setState({ loading: false })
     }
   }
 
   render() {
     const { navigation } = this.props
+    const { loading } = this.state
     const image: CameraImage = navigation.getParam('image')
     const originalWidth = dotProp.get(image, 'node.image.width')
     const originalHeight = dotProp.get(image, 'node.image.height')
@@ -64,10 +78,15 @@ class SingleImage extends React.Component<Props> {
     return (
       <View>
         <Button
+          disabled={loading}
           title="Add to library"
           onPress={this.handleAddButtonPress(image)}
         />
-        <Image source={source} style={style} />
+        {loading ? (
+          <ActivityIndicator />
+        ) : (
+          <Image source={source} style={style} />
+        )}
       </View>
     )
   }
