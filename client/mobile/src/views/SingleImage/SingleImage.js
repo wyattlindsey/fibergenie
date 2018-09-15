@@ -32,7 +32,7 @@ class SingleImage extends React.Component<Props, State> {
     loading: false,
   }
 
-  handleAddButtonPress = (image: Props) => async (): Promise<void> => {
+  handleAddButtonPress = (image: CameraImage) => async (): Promise<void> => {
     const { node: { image: { filename: name, uri } } } = image
 
     const formData = new FormData()
@@ -63,7 +63,7 @@ class SingleImage extends React.Component<Props, State> {
 
       if (!chartData) return // todo notification
 
-      this.navigateToChart(chartData)
+      this.navigateToChart(chartData, image)
     } catch (e) {
       // todo notification system
       console.error(e)
@@ -71,7 +71,7 @@ class SingleImage extends React.Component<Props, State> {
     }
   }
 
-  navigateToChart(chartData: ChartData): void {
+  navigateToChart(chartData: ChartData, image: CameraImage): void {
     const { navigation } = this.props // eslint-disable-line react/prop-types
 
     navigation.dispatch(
@@ -82,7 +82,7 @@ class SingleImage extends React.Component<Props, State> {
           }),
           NavigationActions.navigate({
             routeName: SCREENS.CHART,
-            params: { chartData },
+            params: { chartData, image },
           }),
         ],
         index: 1,
