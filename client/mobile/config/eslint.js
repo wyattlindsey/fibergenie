@@ -11,6 +11,8 @@ module.exports = {
     'arrow-body-style': ['off'],
     'arrow-parens': ['off'],
     'react/jsx-filename-extension': ['off'],
+    'implicit-arrow-linebreak': ['off'],
+    'function-paren-newline': ['off'],
     'linebreak-style': ['off'],
     'no-undef': ['error'],
     'object-curly-newline': ['off'],

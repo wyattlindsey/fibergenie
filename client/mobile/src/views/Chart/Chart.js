@@ -10,7 +10,7 @@ import colors from 'constants/colors'
 import dimensions from 'constants/dimensions'
 
 import type { CameraImage } from 'types/image'
-import type { ChartData, RowPositions } from 'types/chart'
+import type { BoundingBox, ChartData, RowPositions } from 'types/chart'
 
 import styles from './styles'
 
@@ -26,6 +26,7 @@ type Props = {
 }
 
 type State = {
+  boundingBox: BoundingBox,
   currentRowIndex: number,
   rowPositions: RowPositions,
 }
@@ -38,6 +39,7 @@ class Chart extends React.Component<Props, State> {
   state = {
     // 0 (first) row is really chartData.rowPositions[n - 1] (aka bottom)
     // so list is reversed when component mounts
+    boundingBox: null,
     currentRowIndex: 0,
     rowPositions: [],
   }
@@ -45,17 +47,32 @@ class Chart extends React.Component<Props, State> {
   scrollView: any
 
   componentDidMount() {
-    const rowPositions: RowPositions = [...this.chartData.rowPositions]
-    rowPositions.pop() // remove the last item in rowPositions because
-    // it's the top line of rowPosition[n - 1]
-    this.setState({ rowPositions })
+    const image = dotProp.get(this.image, 'node.image')
 
-    const { p1, p2 } = this.chartData.boundingBox
+    const { fullWidth: viewPortWidth } = dimensions.window
 
-    const minX = Math.min(p1.x, p2.x)
-    const minY = Math.min(p1.y, p2.y)
+    const imageWidth = dotProp.get(image, 'width', viewPortWidth)
 
-    this.scrollView.scrollTo({ x: minX, y: minY })
+    const scaleRatio = viewPortWidth / imageWidth
+
+    const rowPositions: RowPositions = [...this.chartData.rowPositions].map(p =>
+      Math.ceil(p * scaleRatio)
+    )
+
+    const scaledBoundingBox: BoundingBox = {
+      p1: {
+        x: Math.ceil(this.chartData.boundingBox.p1.x * scaleRatio),
+        y: Math.ceil(this.chartData.boundingBox.p1.y * scaleRatio),
+      },
+      p2: {
+        x: Math.ceil(this.chartData.boundingBox.p2.x * scaleRatio),
+        y: Math.ceil(this.chartData.boundingBox.p2.y * scaleRatio),
+      },
+    }
+    this.setState({
+      boundingBox: scaledBoundingBox,
+      rowPositions,
+    })
   }
 
   get image(): CameraImage {
@@ -77,7 +94,7 @@ class Chart extends React.Component<Props, State> {
         <View style={styles.buttonGroup}>
           <Button
             color={colors.blue}
-            disabled={currentRowIndex >= rowPositions.length - 1}
+            disabled={currentRowIndex >= rowPositions.length - 2}
             onPress={this.handleButtonPress(moveDirections.UP)}
             style={styles.arrowButton}
             title="↑"
@@ -117,16 +134,28 @@ class Chart extends React.Component<Props, State> {
   }
 
   render() {
-    const { currentRowIndex } = this.state
+    const { boundingBox, currentRowIndex, rowPositions } = this.state
 
     const image = dotProp.get(this.image, 'node.image')
     if (!image) return null
 
     const source = { uri: image.uri }
 
+    const { fullWidth: viewPortWidth } = dimensions.window
+    const { fullHeight: viewPortHeight } = dimensions.window
+
+    const imageWidth = dotProp.get(image, 'width', viewPortWidth)
+    const imageHeight = dotProp.get(image, 'height', viewPortHeight)
+    const aspectRatio = imageWidth / imageHeight
+
     const style = {
-      width: dotProp.get(image, 'width', dimensions.window.fullWidth),
-      height: dotProp.get(image, 'height', dimensions.window.fullHeight),
+      width: viewPortWidth,
+      height: viewPortWidth / aspectRatio,
+    }
+
+    const scaledChartData = {
+      boundingBox,
+      rowPositions,
     }
 
     return (
@@ -142,11 +171,13 @@ class Chart extends React.Component<Props, State> {
           }}
         >
           <Image source={source} style={style} />
-          <RowOutline
-            chartData={this.chartData}
-            currentRowIndex={currentRowIndex}
-            image={image}
-          />
+          {boundingBox && (
+            <RowOutline
+              chartData={scaledChartData}
+              currentRowIndex={currentRowIndex}
+              image={image}
+            />
+          )}
         </ScrollView>
       </View>
     )

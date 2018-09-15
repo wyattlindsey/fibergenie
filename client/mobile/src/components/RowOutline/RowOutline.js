@@ -42,7 +42,7 @@ class RowOutline extends React.Component<Props, State> {
   }
 
   render() {
-    const { bounds: { lowerRight, upperLeft } } = this
+    const { lowerRight, upperLeft } = this.bounds
     const outlineStyle = {
       borderWidth: 2,
       borderColor: colors.blue,
