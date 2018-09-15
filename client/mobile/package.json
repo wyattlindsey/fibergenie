@@ -47,6 +47,7 @@
     "preset": "jest-expo"
   },
   "dependencies": {
+    "cuid": "^2.1.4",
     "dot-prop": "^4.2.0",
     "expo": "^27.0.1",
     "react": "16.3.1",

@@ -87,7 +87,7 @@ class CameraRoll extends React.Component<Props, State> {
               return (
                 <TouchableHighlight
                   key={uri}
-                  onPress={this.handleImagePress(image)}
+                  onPress={this.handleImagePress(p)}
                 >
                   <Image source={source} style={style} />
                 </TouchableHighlight>

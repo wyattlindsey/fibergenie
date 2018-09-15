@@ -1,6 +1,6 @@
 // @flow
 
-import handlers from './handlers'
+import handlers from 'handlers'
 
 import type { $Application, $Request, $Response } from 'express'
 

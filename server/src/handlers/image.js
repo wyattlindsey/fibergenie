@@ -22,6 +22,8 @@ const upload = async (req: Request, res: $Response): Promise<void> => {
   const errorMsg = 'Error processing file'
 
   const fileId = dotProp.get(req, 'file.filename')
+  console.log('fileId: ', fileId)
+  console.log('request: ', req)
   const tmpFilePath = dotProp.get(req, 'file.path')
 
   const { baseDirectory, err } = prepareDirectories(fileId)
@@ -50,6 +52,8 @@ const prepareDirectories = (
   id: string
 ): { baseDirectory: string, err: string | null } => {
   const res = { baseDirectory: '', err: null }
+
+  // todo prevent collisions
 
   try {
     const baseDirectoryPath = `${UPLOADS_FOLDER}/${id}`
