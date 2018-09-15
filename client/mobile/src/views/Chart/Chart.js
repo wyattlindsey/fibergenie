@@ -35,14 +35,14 @@ class Chart extends React.Component<Props, State> {
     title: 'Chart',
   }
 
-  scrollView: HTMLElement
-
   state = {
     // 0 (first) row is really chartData.rowPositions[n - 1] (aka bottom)
     // so list is reversed when component mounts
     currentRowIndex: 0,
     rowPositions: [],
   }
+
+  scrollView: any
 
   componentDidMount() {
     const rowPositions: RowPositions = [...this.chartData.rowPositions]
@@ -95,7 +95,6 @@ class Chart extends React.Component<Props, State> {
   }
 
   handleButtonPress = (direction: MoveDirection) => (): void => {
-    console.log('state.rowPositions.length', this.state.rowPositions.length)
     if (direction === moveDirections.UP) {
       this.setState(state => {
         return {

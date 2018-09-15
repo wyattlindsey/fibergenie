@@ -3,7 +3,7 @@ type ImageDimensions = {
   width: number,
 }
 
-type CameraNodeImage = {
+type NodeImage = {
   filename: string,
   height: number,
   isStored: boolean,
@@ -14,7 +14,7 @@ type CameraNodeImage = {
 
 type CameraImageNode = {
   group_name: string,
-  image: CameraNodeImage,
+  image: NodeImage,
   location: {[string]: any},
   timestamp: string,
   type: string,
