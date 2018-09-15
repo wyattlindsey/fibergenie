@@ -29,6 +29,7 @@ type State = {
   boundingBox: BoundingBox,
   currentRowIndex: number,
   rowPositions: RowPositions,
+  scaleRatio: number,
 }
 
 class Chart extends React.Component<Props, State> {
@@ -42,6 +43,7 @@ class Chart extends React.Component<Props, State> {
     boundingBox: null,
     currentRowIndex: 0,
     rowPositions: [],
+    scaleRatio: 1,
   }
 
   scrollView: any
@@ -54,6 +56,8 @@ class Chart extends React.Component<Props, State> {
     const imageWidth = dotProp.get(image, 'width', viewPortWidth)
 
     const scaleRatio = viewPortWidth / imageWidth
+
+    this.setState({ scaleRatio })
 
     const rowPositions: RowPositions = [...this.chartData.rowPositions].map(p =>
       Math.ceil(p * scaleRatio)
@@ -134,7 +138,12 @@ class Chart extends React.Component<Props, State> {
   }
 
   render() {
-    const { boundingBox, currentRowIndex, rowPositions } = this.state
+    const {
+      boundingBox,
+      currentRowIndex,
+      rowPositions,
+      scaleRatio,
+    } = this.state
 
     const image = dotProp.get(this.image, 'node.image')
     if (!image) return null
@@ -176,6 +185,7 @@ class Chart extends React.Component<Props, State> {
               chartData={scaledChartData}
               currentRowIndex={currentRowIndex}
               image={image}
+              scaleRatio={scaleRatio}
             />
           )}
         </ScrollView>

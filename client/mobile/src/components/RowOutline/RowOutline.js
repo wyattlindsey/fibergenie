@@ -9,6 +9,7 @@ import type { ChartData, Coord, RowPositions } from 'types/chart'
 type Props = {
   chartData: ChartData,
   currentRowIndex: number,
+  scaleRatio: number,
 }
 
 type State = {
@@ -36,15 +37,24 @@ class RowOutline extends React.Component<Props, State> {
     const { boundingBox } = chartData
     const maxX = Math.max(boundingBox.p1.x, boundingBox.p2.x)
     const minX = Math.min(boundingBox.p1.x, boundingBox.p2.x)
-    const upperLeft: Coord = { x: minX, y: rowPositions[currentRowIndex + 1] }
+
+    // upper left corner needs a nudge of 1
+    const upperLeft: Coord = {
+      x: minX - 1,
+      y: rowPositions[currentRowIndex + 1] - 1,
+    }
     const lowerRight: Coord = { x: maxX, y: rowPositions[currentRowIndex] }
     return { upperLeft, lowerRight }
   }
 
   render() {
+    const { scaleRatio } = this.props
     const { lowerRight, upperLeft } = this.bounds
+
+    const borderWidth = Math.max(Math.floor(4 * scaleRatio), 1)
+
     const outlineStyle = {
-      borderWidth: 2,
+      borderWidth,
       borderColor: colors.blue,
       position: 'absolute',
       left: upperLeft.x,
