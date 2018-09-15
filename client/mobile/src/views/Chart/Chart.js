@@ -7,11 +7,12 @@ import dotProp from 'dot-prop'
 import RowOutline from 'components/RowOutline'
 
 import flexbox from 'styles/flexbox'
+import styles from './styles'
 
 import dimensions from 'constants/dimensions'
 
 import type { CameraImage } from 'types/image'
-import type { ChartData } from 'types/chart'
+import type { ChartData, RowPositions } from 'types/chart'
 
 const CHART_FOCUS_OFFSET = 5
 
@@ -19,9 +20,22 @@ type Props = {
   navigation: { [string]: any },
 }
 
-class Chart extends React.Component<Props> {
+type State = {
+  currentRowIndex: number,
+  rowPositions: RowPositions,
+}
+
+class Chart extends React.Component<Props, State> {
   static navigationOptions = {
     title: 'Chart',
+  }
+
+  _scrollView: React.Node
+
+  state = {
+    // 0 (first) row is really chartData.rowPositions[n - 1] (aka bottom) so list is reversed when component mounts
+    currentRowIndex: 0,
+    rowPositions: [],
   }
 
   componentDidMount() {
@@ -30,7 +44,7 @@ class Chart extends React.Component<Props> {
     const minX = Math.min(p1.x, p2.x)
     const minY = Math.min(p1.y, p2.y)
 
-    this.ScrollView.scrollTo({ x: minX, y: minY })
+    this._scrollView.scrollTo({ x: minX, y: minY })
   }
 
   get image(): CameraImage {
@@ -54,18 +68,17 @@ class Chart extends React.Component<Props> {
       height: dotProp.get(image, 'height', dimensions.window.fullHeight),
     }
 
-    const contentContainerStyle = {
-      // overflow: 'visible',
-    }
-
     return (
       <View>
+        <View style={styles.toolbar}>
+          <Text style={styles.rowText}>{`Row: ${this.state.currentRowIndex +
+            1}`}</Text>
+        </View>
         <ScrollView
           centerContent
-          concontentContainerStyle={contentContainerStyle}
           maximumZoomScale={5}
           minimumZoomScale={0.5}
-          ref={c => (this.ScrollView = c)}
+          ref={c => (this._scrollView = c)}
         >
           <Image source={source} style={style} />
           <RowOutline chartData={this.chartData} image={image} rowIndex={0} />
