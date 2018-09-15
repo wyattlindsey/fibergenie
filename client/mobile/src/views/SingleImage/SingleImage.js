@@ -1,15 +1,19 @@
 // @flow
 import React from 'react'
 import { Button, Image, Text, View } from 'react-native'
+import Axios from 'axios'
+import { NavigationActions, StackActions } from 'react-navigation'
 
 import cuid from 'cuid'
 import dotProp from 'dot-prop'
 
-import Dimensions from 'constants/dimensions'
-
 import ActivityIndicator from 'components/ActivityIndicator'
 
+import Dimensions from 'constants/dimensions'
+import SCREENS from 'constants/screens'
+
 import type { CameraImage } from 'types/image'
+import type { ChartData } from 'types/chart'
 
 type Props = {
   navigation: { [string]: any },
@@ -38,20 +42,45 @@ class SingleImage extends React.Component<Props, State> {
     this.setState({ loading: true })
 
     try {
-      const response = await fetch('http://localhost:3000/image', {
-        method: 'POST',
-        header: {
-          Accept: 'application/json',
-          'content-type': 'multipart/form-data',
-        },
-        body: formData,
-      })
-      console.log(response)
+      const response = await Axios.post(
+        'http://localhost:3000/image',
+        formData,
+        {
+          headers: {
+            Accept: 'application/json',
+            'Content-Type': 'multipart/form-data',
+          },
+        }
+      )
+
       this.setState({ loading: false })
+
+      const chartData: ChartData = dotProp.get(response, 'data.0')
+
+      if (!chartData) return // todo notification
+
+      this.navigateToChart(chartData)
     } catch (e) {
+      // todo notification system
       console.error(e)
       this.setState({ loading: false })
     }
+  }
+
+  navigateToChart(chartData: ChartData): void {
+    const { navigation } = this.props // eslint-disable-line react/prop-types
+    navigation.dispatch(
+      StackActions.replace({
+        action: NavigationActions.navigate({ navigateTo: SCREENS.CHART }),
+        key: SCREENS.CAMERA_ROLL,
+        routeName: SCREENS.CHART,
+      })
+    )
+    // navigation.navigate({
+    //   key: SCREENS.CHART,
+    //   params: { chartData },
+    //   routeName: SCREENS.CHART,
+    // })
   }
 
   render() {

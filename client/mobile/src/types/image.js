@@ -19,4 +19,9 @@ type CameraNodeImage = {
   uri: string,
 }
 
-export default { CameraImage }
+export type ImageDimensions = {
+  height: number,
+  width: number,
+}
+
+export default { CameraImage, ImageDimensions }
