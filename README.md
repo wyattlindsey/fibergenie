@@ -57,7 +57,7 @@ yarn
 
 **Running**
 
-From the `fibergenie/server/` directory, launch the application with Nodemon, Flow and ESLint using:
+From the `fibergenie/server/` directory, launch the server application with Nodemon, Flow and ESLint using:
 ```
 yarn start:dev
 ```
@@ -78,4 +78,27 @@ yarn test
 To clean out the public uploads folder, run the following from the `fibergenie/server/` directory:
 ```
 yarn clean:uploads
+```
+
+Client
+------
+A preliminary POC version of the mobile app is ready.
+
+**Installation**
+
+```
+git clone git@github.com:wyattlindsey/fibergenie.git
+cd fibergenie/client/mobile
+yarn
+```
+
+**Running**
+
+From the `fibergenie/client/mobile` directory, launch the mobile application in your iOS or Android simulator:
+```
+yarn android
+
+or
+
+yarn ios
 ```
