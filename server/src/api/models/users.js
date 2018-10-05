@@ -26,7 +26,7 @@ const UserSchema = new Schema({
 })
 
 /* eslint-disable no-invalid-this */
-UserSchema.pre('save', next => {
+UserSchema.pre('save', function(next) {
   // $FlowIgnore
   this.password = bcrypt.hashSync(this.password, SALT_ROUNDS)
   next()
