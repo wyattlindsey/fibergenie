@@ -11,7 +11,7 @@ import {
   horizontalSegments,
   verticalLines,
   verticalSegments,
-} from '../src/test/fixtures/chart'
+} from '../test/fixtures/chart'
 
 const ImageStub = sinon.stub()
 ImageStub.prototype.lineSegments = sinon.stub().returns([])

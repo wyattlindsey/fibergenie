@@ -1,5 +1,7 @@
 // @flow
 
+import imageModel from 'api/models/images'
+
 import dotProp from 'dot-prop'
 import fs from 'fs'
 import noop from 'lodash/noop'

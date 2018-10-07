@@ -14,6 +14,8 @@ export const create = (
 ): void => {
   const { email, name, password } = req.body
 
+  // todo check for pre-existing account with the same email
+
   userModel.create(
     {
       name,

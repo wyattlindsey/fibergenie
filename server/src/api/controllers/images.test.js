@@ -3,9 +3,9 @@ import fs from 'fs'
 import noop from 'lodash/noop'
 import sinon from 'sinon'
 
-import imageHandler, { UPLOADS_FOLDER } from './image'
-import Chart from '../lib/chart'
-import Image from '../lib/image'
+import imageHandler, { UPLOADS_FOLDER } from './images'
+import Chart from '../../lib/chart'
+import Image from '../../lib/image'
 
 const fileToUpload = {
   filename: 'file-id',

@@ -7,16 +7,19 @@
   },
   "main": "server.js",
   "scripts": {
-    "build": "yarn clean; babel . -d dist --presets env,flow,stage-2 --ignore flow-typed,node_modules",
+    "build":
+      "yarn clean; babel . -d dist --presets env,flow,stage-2 --ignore flow-typed,node_modules",
     "clean": "rm -rf dist",
     "clean:uploads": "rm -rf public/uploads/*; mkdir public/uploads/tmp",
     "flow": "flow",
     "lint": "eslint .",
     "serve": "export NODE_ENV=production; node dist/server.js",
     "start": "yarn start:dev",
-    "start:dev": "export NODE_ENV=development; nodemon server.js --exec 'yarn lint && yarn flow && babel-node'",
+    "start:dev":
+      "export NODE_ENV=development; nodemon server.js --exec 'yarn lint && yarn flow && babel-node'",
     "start:prod": "node server.js --exec babel-node",
-    "test": "mocha --require babel-core/register **/*.test.js --watch"
+    "test":
+      "mocha --require babel-core/register \"./{,!(node_modules)/**/}*.test.js\" --watch"
   },
   "repository": {
     "type": "git",
@@ -61,11 +64,7 @@
     "sinon": "^6.0.0"
   },
   "babel": {
-    "presets": [
-      "env",
-      "flow",
-      "stage-2"
-    ],
+    "presets": ["env", "flow", "stage-2"],
     "sourceMaps": "both"
   }
 }
