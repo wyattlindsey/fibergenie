@@ -10,9 +10,17 @@ import users from 'routes/users'
 import mongoose from 'config/database'
 
 const app = express()
-// routes(app)
+routes(app)
 
-mongoose.connection.on('error', console.error.bind(console, 'MongoDB connection error: '))
+mongoose.connection.on(
+  'error',
+  console.error.bind(console, 'MongoDB connection error: ')
+)
+
+app.set(
+  'secretKey',
+  '522d56346b553476375b6a20655c61772e2c2f3c4e7641402d29316e7a'  // todo store in config
+)
 
 app.use(logger('dev'))
 app.use(bodyParser.urlencoded({ extended: false }))

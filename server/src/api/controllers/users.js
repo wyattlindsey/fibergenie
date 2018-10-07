@@ -39,7 +39,7 @@ export const authenticate = (
   res: $Response,
   next: NextFunction
 ): void => {
-  const { email, password } = req
+  const { email, password } = req.body
 
   userModel.findOne(
     {
