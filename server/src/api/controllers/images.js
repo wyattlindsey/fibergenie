@@ -33,6 +33,7 @@ const upload = async (req: Request, res: $Response): Promise<void> => {
   } else {
     try {
       const chartData = await processUpload(req.file, baseDirectory)
+
       if (!chartData) {
         res.status(500).send(errorMsg)
       } else {
@@ -89,6 +90,8 @@ const processUpload = async (
         TARGET_IMAGE_DIMS
       )
 
+      const isMultiPage = PDFs.length > 1
+
       // remove '.pdf' extension so upload() handler can delete it with the original filename
       fs.renameSync(pdfPath, sourcePath)
 
@@ -102,7 +105,22 @@ const processUpload = async (
           fs.mkdirSync(directoryForPage)
         }
 
-        return await processPage(pdf.path, directoryForPage)
+        const processedPage = await processPage(pdf.path, directoryForPage)
+
+        imageModel.create({
+          chartData: processedPage,
+          multiPage: isMultiPage
+            ? {
+                pageNumber: i,
+                parent: `${destDir}/${PAGE_PREFIX}${1}`,
+              }
+            : null,
+          name: dotProp.get(file, 'originalname', 'original'),
+          owner: 'me', // todo - this will be the user ID of the client requesting the upload
+          path: directoryForPage,
+        })
+
+        return processedPage
       })
 
       const pages = await Promise.all(processedPages)
@@ -112,10 +130,17 @@ const processUpload = async (
 
       return pages
     } else {
-      const processedPage = await processPage(
-        sourcePath,
-        `${destDir}/${PAGE_PREFIX}${1}`
-      )
+      const destPath = `${destDir}/${PAGE_PREFIX}${1}`
+
+      const processedPage = await processPage(sourcePath, destPath)
+
+      imageModel.create({
+        chartData: [processedPage],
+        name: dotProp.get(file, 'originalname', 'original'),
+        owner: 'me', // todo - this will be the user ID of the client requesting the upload
+        path: destPath,
+      })
+
       return [processedPage]
     }
   } catch (e) {
@@ -149,6 +174,7 @@ const processPage = async (
     originalPath
   )
   if (!originalDimensions) return null
+
   const results = Chart.extractLines(preparedImagePath, originalDimensions)
 
   if (process.env.NODE_ENV === 'development' && results) {

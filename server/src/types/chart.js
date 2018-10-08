@@ -24,6 +24,7 @@ type RowPositions = number[]
 
 type ChartData = {
   boundingBox: BoundingBox,
+  path: String,
   rowPositions: RowPositions,
 }
 
