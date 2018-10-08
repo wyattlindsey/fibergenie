@@ -54,6 +54,7 @@ const ImageSchema = new Schema({
   },
   owner: {
     type: String,
+    index: { unique: true },
     trim: true,
     required: true,
   },

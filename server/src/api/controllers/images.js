@@ -2,6 +2,7 @@
 
 import dotProp from 'dot-prop'
 import fs from 'fs'
+import { Types } from 'mongoose'
 import noop from 'lodash/noop'
 import rimraf from 'rimraf'
 
@@ -19,6 +20,8 @@ type Request = $Request & { file: any }
 const TARGET_IMAGE_DIMS = 2048
 const UPLOADS_FOLDER = 'public/uploads'
 const PAGE_PREFIX = 'page_'
+
+// todo make the response values more like the users controller
 
 const upload = async (req: Request, res: $Response): Promise<void> => {
   const errorMsg = 'Error processing file'
@@ -50,9 +53,25 @@ const upload = async (req: Request, res: $Response): Promise<void> => {
       fs.unlinkSync(tmpFilePath)
     } catch (e) {
       console.error(e)
-      res.status(500).send(errorMsg)
+      res.status(500).send(errorMsg, e)
     }
   }
+}
+
+const getById = (req: $Request, res: $Response): void => {
+  const imageId = dotProp.get(req, 'params.imageId')
+  if (!imageId) {
+    res.status(500).send('Invalid image ID')
+    return
+  }
+
+  imageModel.findOne({ _id: imageId }, (err, image) => {
+    if (err) {
+      res.status(500).send(`Error finding image: : ${err}`)
+    } else {
+      res.status(200).send(image)
+    }
+  })
 }
 
 const getByUserId = (req: $Request, res: $Response): void => {
@@ -62,11 +81,44 @@ const getByUserId = (req: $Request, res: $Response): void => {
     return
   }
 
-  const images = imageModel.find({ owner: userId }, (err, images) => {
+  imageModel.find({ owner: userId }, (err, images) => {
     if (err) {
-      res.status(500).send('Error finding images')
+      res.status(500).send(`Error finding images: : ${err}`)
     } else {
       res.status(200).send(images)
+    }
+  })
+}
+
+// todo this isn't working correctly yet
+const updateById = (req: $Request, res: $Response): void => {
+  const imageId = dotProp.get(req, 'params.imageId')
+  if (!imageId) {
+    res.status(500).send('Invalid image ID')
+    return
+  }
+
+  imageModel.replaceOne({ _id: imageId }, ...req.body, (err) => {
+    if (err) {
+      res.status(500).send(`Error updating image: ${err}`)
+    } else {
+      res.sendStatus(204)
+    }
+  })
+}
+
+const deleteById = (req: $Request, res: $Response): void => {
+  const imageId = dotProp.get(req, 'params.imageId')
+  if (!imageId) {
+    res.status(500).send('Invalid image ID')
+    return
+  }
+
+  imageModel.remove({ _id: imageId }, err => {
+    if (err) {
+      res.status(500).send(`Error removing image: ${err}`)
+    } else {
+      res.sendStatus(204)
     }
   })
 }
@@ -214,7 +266,10 @@ export default {
   processUpload,
   processPage,
   upload,
+  getById,
   getByUserId,
+  updateById,
+  deleteById,
 }
 
 export { UPLOADS_FOLDER }
