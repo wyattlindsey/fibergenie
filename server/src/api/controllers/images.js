@@ -55,6 +55,22 @@ const upload = async (req: Request, res: $Response): Promise<void> => {
   }
 }
 
+const getByUserId = (req: $Request, res: $Response): void => {
+  const userId = dotProp.get(req, 'body.userId')
+  if (!userId) {
+    res.status(403).send('Unauthorized user requested getByUserId')
+    return
+  }
+
+  const images = imageModel.find({ owner: userId }, (err, images) => {
+    if (err) {
+      res.status(500).send('Error finding images')
+    } else {
+      res.status(200).send(images)
+    }
+  })
+}
+
 const prepareDirectories = (
   id: string
 ): { baseDirectory: string, err: string | null } => {
@@ -198,6 +214,7 @@ export default {
   processUpload,
   processPage,
   upload,
+  getByUserId,
 }
 
 export { UPLOADS_FOLDER }
