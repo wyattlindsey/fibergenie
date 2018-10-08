@@ -1,11 +1,11 @@
 // @flow
 
-import imageModel from 'api/models/images'
-
 import dotProp from 'dot-prop'
 import fs from 'fs'
 import noop from 'lodash/noop'
 import rimraf from 'rimraf'
+
+import imageModel from 'api/models/images'
 
 import Image from 'lib/image'
 import Chart from 'lib/chart'
@@ -23,6 +23,12 @@ const PAGE_PREFIX = 'page_'
 const upload = async (req: Request, res: $Response): Promise<void> => {
   const errorMsg = 'Error processing file'
 
+  const userId = dotProp.get(req, 'body.userId')
+  if (!userId) {
+    res.status(403).send('Unauthorized user requested upload')
+    return
+  }
+
   const fileId = dotProp.get(req, 'file.filename')
   const tmpFilePath = dotProp.get(req, 'file.path')
 
@@ -32,7 +38,7 @@ const upload = async (req: Request, res: $Response): Promise<void> => {
     res.status(500).send('Error creating directory')
   } else {
     try {
-      const chartData = await processUpload(req.file, baseDirectory)
+      const chartData = await processUpload(req.file, baseDirectory, userId)
 
       if (!chartData) {
         res.status(500).send(errorMsg)
@@ -71,7 +77,8 @@ const prepareDirectories = (
 
 const processUpload = async (
   file: any,
-  destDir: string
+  destDir: string,
+  userId: string
 ): Promise<?(ChartData[])> => {
   try {
     if (!file) return null
@@ -116,7 +123,7 @@ const processUpload = async (
               }
             : null,
           name: dotProp.get(file, 'originalname', 'original'),
-          owner: 'me', // todo - this will be the user ID of the client requesting the upload
+          owner: userId,
           path: directoryForPage,
         })
 
@@ -137,7 +144,7 @@ const processUpload = async (
       imageModel.create({
         chartData: [processedPage],
         name: dotProp.get(file, 'originalname', 'original'),
-        owner: 'me', // todo - this will be the user ID of the client requesting the upload
+        owner: userId,
         path: destPath,
       })
 
