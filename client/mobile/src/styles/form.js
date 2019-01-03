@@ -2,6 +2,7 @@ import { StyleSheet } from 'react-native'
 
 const field = {
   alignItems: 'center',
+  marginBottom: 8,
 }
 
 const label = {

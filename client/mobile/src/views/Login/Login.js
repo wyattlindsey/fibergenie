@@ -1,9 +1,13 @@
 import React from 'react'
-import { Text, TextInput, View } from 'react-native'
+import { Button, Text, TextInput, View } from 'react-native'
 
 import flexbox from 'styles/flexbox'
 import form from 'styles/form'
-import layout from 'styles/layout'
+
+const formWrapperStyle = {
+  maxWidth: 400,
+  width: '80%',
+}
 
 const textInputStyle = {
   height: 40,
@@ -12,9 +16,8 @@ const textInputStyle = {
   borderWidth: 1,
 }
 
-const formWrapperStyle = {
-  maxWidth: 400,
-  width: '80%',
+const buttonStyle = {
+  marginTop: 16,
 }
 
 class Login extends React.Component {
@@ -25,6 +28,10 @@ class Login extends React.Component {
   state = {
     username: '',
     password: '',
+  }
+
+  handleSubmit() {
+    console.log('submit')
   }
 
   render() {
@@ -48,6 +55,13 @@ class Login extends React.Component {
             secureTextEntry
             value={this.state.password}
           />
+          <View style={buttonStyle}>
+            <Button
+              onPress={this.handleSubmit}
+              style={buttonStyle}
+              title="Login"
+            />
+          </View>
         </View>
       </View>
     )
