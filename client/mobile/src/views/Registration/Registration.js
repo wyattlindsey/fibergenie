@@ -1,7 +1,7 @@
 // @flow
 
 import React from 'react'
-import { Button, View } from 'react-native'
+import { Button, Text, View } from 'react-native'
 import { Formik } from 'formik'
 import makeInputGreatAgain, {
   handleTextInput,
@@ -17,6 +17,8 @@ import FormInput from 'components/Form/Input'
 
 import flexbox from 'styles/flexbox'
 
+import SCREENS from 'constants/screens'
+
 const Input = compose(
   handleTextInput,
   makeInputGreatAgain,
@@ -29,6 +31,10 @@ const formWrapperStyle = {
   width: '80%',
 }
 
+const loginLinkStyle = {
+  marginBottom: 32,
+}
+
 const validationSchema = Yup.object().shape({
   email: Yup.string()
     .required()
@@ -37,6 +43,8 @@ const validationSchema = Yup.object().shape({
     .required()
     .min(8, 'Please choose a password at least 8 characters long'),
 })
+
+const LOGIN_TEXT = 'Already have an account?'
 
 type State = {
   showPassword: boolean,
@@ -51,6 +59,13 @@ class Registration extends React.Component<void, State> {
     title: 'Registration',
   }
 
+  handleLoginPress = () => {
+    const {
+      navigation: { navigate },
+    } = this.props // eslint-disable-line react/prop-types
+    navigate({ key: SCREENS.LOGIN, routeName: SCREENS.LOGIN })
+  }
+
   handleSubmit = (values: { [string]: any }) => {}
 
   render() {
@@ -58,6 +73,10 @@ class Registration extends React.Component<void, State> {
 
     return (
       <View style={flexbox.center}>
+        <View style={loginLinkStyle}>
+          <Text>{LOGIN_TEXT}</Text>
+          <Button onPress={this.handleLoginPress} title="Sign In" />
+        </View>
         <View style={formWrapperStyle}>
           <Formik
             onSubmit={this.handleSubmit}
@@ -86,7 +105,9 @@ class Registration extends React.Component<void, State> {
                   />
                   <Error
                     error={formProps.errors.email}
-                    visible={formProps.touched.email || didSubmit}
+                    visible={
+                      (formProps.touched.email || didSubmit) && props.dirty
+                    }
                   />
                   <Input
                     label="Password"
@@ -97,7 +118,9 @@ class Registration extends React.Component<void, State> {
                   />
                   <Error
                     error={formProps.errors.password}
-                    visible={formProps.touched.password || didSubmit}
+                    visible={
+                      (formProps.touched.password || didSubmit) && props.dirty
+                    }
                   />
                   <Button
                     onPress={props.handleSubmit}

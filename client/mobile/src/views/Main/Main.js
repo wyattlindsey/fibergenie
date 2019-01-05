@@ -37,7 +37,7 @@ class Main extends React.Component<Props> {
 
   componentDidMount() {
     const { navigation: { navigate } } = this.props // eslint-disable-line react/prop-types
-    navigate({ key: SCREENS.REGISTRATION, routeName: SCREENS.REGISTRATION })
+    navigate({ key: SCREENS.LOGIN, routeName: SCREENS.LOGIN })
   }
 
   handleButtonPress = (target: $Values<typeof SCREENS>) => (): void => {

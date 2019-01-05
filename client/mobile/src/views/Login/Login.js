@@ -2,11 +2,29 @@
 
 import React from 'react'
 import { Button, Text, TextInput, View } from 'react-native'
+import { Formik } from 'formik'
+import makeInputGreatAgain, {
+  handleTextInput,
+  withNextInputAutoFocusForm,
+  withNextInputAutoFocusInput,
+} from 'react-native-formik'
+import { compose } from 'recompose'
+import * as Yup from 'yup'
+import _ from 'lodash'
+
+import Error from 'components/Form/Error'
+import FormInput from 'components/Form/Input'
 
 import flexbox from 'styles/flexbox'
-import form from 'styles/form'
 
 import SCREENS from 'constants/screens'
+
+const Input = compose(
+  handleTextInput,
+  makeInputGreatAgain,
+  withNextInputAutoFocusInput
+)(FormInput)
+const Form = withNextInputAutoFocusForm(View)
 
 const registrationLinkStyle = {
   marginBottom: 32,
@@ -28,21 +46,24 @@ const buttonStyle = {
   marginTop: 16,
 }
 
-const REGISTRATION_TEXT = 'Don\'t have an account?'
+const validationSchema = Yup.object().shape({
+  email: Yup.string().required(),
+  password: Yup.string().required(),
+})
+
+const REGISTRATION_TEXT = "Don't have an account?"
 
 type Props = {
   navigation: { [any]: any },
 }
 
 type State = {
-  username: string,
-  password: string,
+  showPassword: boolean,
 }
 
 class Login extends React.Component<Props, State> {
   state = {
-    username: '',
-    password: '',
+    showPassword: false,
   }
 
   static navigationOptions = {
@@ -59,7 +80,7 @@ class Login extends React.Component<Props, State> {
   handleSubmit() {}
 
   render() {
-    const { password, username } = this.state
+    const { showPassword } = this.state
 
     return (
       <View style={flexbox.center}>
@@ -68,30 +89,59 @@ class Login extends React.Component<Props, State> {
           <Button onPress={this.handleRegistrationPress} title="Register" />
         </View>
         <View style={formWrapperStyle}>
-          <View style={form.field}>
-            <Text style={form.label}>Username</Text>
-            <TextInput
-              autoCapitalize="none"
-              style={textInputStyle}
-              onChangeText={v => this.setState({ username: v })}
-              value={username}
-            />
-          </View>
-          <Text style={form.label}>Password</Text>
-          <TextInput
-            autoCapitalize="none"
-            style={textInputStyle}
-            onChangeText={v => this.setState({ password: v })}
-            secureTextEntry
-            value={password}
+          <Formik
+            onSubmit={this.handleSubmit}
+            validationSchema={validationSchema}
+            render={props => {
+              const didSubmit = props.submitCount > 0
+              const formProps = {
+                errors: {
+                  email: _.get(props, 'errors.email'),
+                  password: _.get(props, 'errors.password'),
+                },
+                touched: {
+                  email: _.get(props, 'touched.email'),
+                  password: _.get(props, 'touched.password'),
+                },
+              }
+
+              return (
+                <Form>
+                  <Input
+                    autoFocus
+                    label="Email"
+                    name="email"
+                    placeholder="email"
+                    type="email"
+                  />
+                  <Error
+                    error={formProps.errors.email}
+                    visible={
+                      (formProps.touched.email || didSubmit) && props.dirty
+                    }
+                  />
+                  <Input
+                    label="Password"
+                    name="password"
+                    placeholder="password"
+                    secureTextEntry={!showPassword}
+                    type="password"
+                  />
+                  <Error
+                    error={formProps.errors.password}
+                    visible={
+                      (formProps.touched.password || didSubmit) && props.dirty
+                    }
+                  />
+                  <Button
+                    onPress={props.handleSubmit}
+                    title="Sign In"
+                    type="submit"
+                  />
+                </Form>
+              )
+            }}
           />
-          <View style={buttonStyle}>
-            <Button
-              onPress={this.handleSubmit}
-              style={buttonStyle}
-              title="Login"
-            />
-          </View>
         </View>
       </View>
     )
