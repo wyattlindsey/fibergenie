@@ -1,7 +1,7 @@
 // @flow
 
 import React from 'react'
-import { Button, TextInput, View } from 'react-native'
+import { Button, View } from 'react-native'
 import { Formik } from 'formik'
 import makeInputGreatAgain, {
   handleTextInput,
@@ -13,6 +13,7 @@ import * as Yup from 'yup'
 import _ from 'lodash'
 
 import Error from 'components/Form/Error'
+import FormInput from 'components/Form/Input'
 
 import flexbox from 'styles/flexbox'
 
@@ -20,19 +21,8 @@ const Input = compose(
   handleTextInput,
   makeInputGreatAgain,
   withNextInputAutoFocusInput
-)(TextInput)
+)(FormInput)
 const Form = withNextInputAutoFocusForm(View)
-
-const textInputStyle = {
-  backgroundColor: 'white',
-  height: 40,
-  width: '100%',
-  padding: 8,
-  fontSize: 16,
-  borderColor: 'gray',
-  borderRadius: 4,
-  borderWidth: 1,
-}
 
 const formWrapperStyle = {
   maxWidth: 400,
@@ -92,7 +82,6 @@ class Registration extends React.Component<void, State> {
                     label="Email"
                     name="email"
                     placeholder="email"
-                    style={textInputStyle}
                     type="email"
                   />
                   <Error
@@ -104,7 +93,6 @@ class Registration extends React.Component<void, State> {
                     name="password"
                     placeholder="password"
                     secureTextEntry={!showPassword}
-                    style={textInputStyle}
                     type="password"
                   />
                   <Error
