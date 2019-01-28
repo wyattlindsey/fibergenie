@@ -12,6 +12,8 @@ import { compose } from 'recompose'
 import * as Yup from 'yup'
 import _ from 'lodash'
 
+import request from 'api/request'
+
 import Error from 'components/Form/Error'
 import FormInput from 'components/Form/Input'
 
@@ -36,6 +38,8 @@ const loginLinkStyle = {
 }
 
 const validationSchema = Yup.object().shape({
+  firstName: Yup.string().required(),
+  lastName: Yup.string().required(),
   email: Yup.string()
     .required()
     .email('Please enter a valid email address'),
@@ -47,11 +51,22 @@ const validationSchema = Yup.object().shape({
 const LOGIN_TEXT = 'Already have an account?'
 
 type State = {
+  error: string | null,
+  loading: boolean,
   showPassword: boolean,
+}
+
+type FormData = {
+  firstName: string,
+  lastName: string,
+  email: string,
+  password: string,
 }
 
 class Registration extends React.Component<void, State> {
   state = {
+    error: null,
+    loading: false,
     showPassword: false,
   }
 
@@ -66,7 +81,16 @@ class Registration extends React.Component<void, State> {
     navigate({ key: SCREENS.LOGIN, routeName: SCREENS.LOGIN })
   }
 
-  handleSubmit = (values: { [string]: any }) => {}
+  handleSubmit = async (values: FormData ) => {
+    this.setState({ loading: true })
+    const res = await request.post('users/register', values)
+    if (res.status !== 201) {
+      // success
+    } else {
+      // failure notification
+    }
+    this.setState({ loading: false })
+  }
 
   render() {
     const { showPassword } = this.state
@@ -85,10 +109,14 @@ class Registration extends React.Component<void, State> {
               const didSubmit = props.submitCount > 0
               const formProps = {
                 errors: {
+                  firstName: _.get(props, 'errors.firstName'),
+                  lastName: _.get(props, 'errors.lastName'),
                   email: _.get(props, 'errors.email'),
                   password: _.get(props, 'errors.password'),
                 },
                 touched: {
+                  firstName: _.get(props, 'touched.firstName'),
+                  lastName: _.get(props, 'touched.lastName'),
                   email: _.get(props, 'touched.email'),
                   password: _.get(props, 'touched.password'),
                 },
@@ -98,6 +126,30 @@ class Registration extends React.Component<void, State> {
                 <Form>
                   <Input
                     autoFocus
+                    label="First name"
+                    name="firstName"
+                    placeholder="first name"
+                    type="text"
+                  />
+                  <Error
+                    error={formProps.errors.firstName}
+                    visible={
+                      (formProps.touched.firstName || didSubmit) && props.dirty
+                    }
+                  />
+                  <Input
+                    label="Last name"
+                    name="lastName"
+                    placeholder="last name"
+                    type="text"
+                  />
+                  <Error
+                    error={formProps.errors.lastName}
+                    visible={
+                      (formProps.touched.lastName || didSubmit) && props.dirty
+                    }
+                  />
+                  <Input
                     label="Email"
                     name="email"
                     placeholder="email"

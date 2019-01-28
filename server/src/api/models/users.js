@@ -8,7 +8,12 @@ const SALT_ROUNDS = 10
 const Schema = mongoose.Schema
 
 const UserSchema = new Schema({
-  name: {
+  firstName: {
+    type: String,
+    trim: true,
+    required: true,
+  },
+  lastName: {
     type: String,
     trim: true,
     required: true,

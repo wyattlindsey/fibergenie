@@ -2,6 +2,7 @@
 
 import React from 'react'
 import { Button, Text, TextInput, View } from 'react-native'
+import { SecureStore } from 'expo'
 import { Formik } from 'formik'
 import makeInputGreatAgain, {
   handleTextInput,
@@ -12,11 +13,14 @@ import { compose } from 'recompose'
 import * as Yup from 'yup'
 import _ from 'lodash'
 
+import request from 'api/request'
+
 import Error from 'components/Form/Error'
 import FormInput from 'components/Form/Input'
 
 import flexbox from 'styles/flexbox'
 
+import { CONFIG_KEYS } from 'constants'
 import SCREENS from 'constants/screens'
 
 const Input = compose(
@@ -58,11 +62,18 @@ type Props = {
 }
 
 type State = {
+  loading: boolean,
   showPassword: boolean,
+}
+
+type FormData = {
+  email: string,
+  password: string,
 }
 
 class Login extends React.Component<Props, State> {
   state = {
+    loading: false,
     showPassword: false,
   }
 
@@ -70,14 +81,29 @@ class Login extends React.Component<Props, State> {
     title: 'Login',
   }
 
-  handleRegistrationPress = () => {
+  navigate(key: $Values<SCREENS>) {
     const {
       navigation: { navigate },
     } = this.props // eslint-disable-line react/prop-types
-    navigate({ key: SCREENS.REGISTRATION, routeName: SCREENS.REGISTRATION })
+    navigate({ key, routeName: key })
   }
 
-  handleSubmit() {}
+  handleRegistrationPress = () => {
+    this.navigate(SCREENS.REGISTRATION)
+  }
+
+  handleSubmit = async (values: FormData) => {
+    this.setState({ loading: true })
+    const res = await request.post('users/authenticate', values)
+    if (res.status === 200) {
+      const token = _.get(res, 'data.data.token')
+      await SecureStore.setItemAsync(CONFIG_KEYS.AUTH_TOKEN, token)
+      this.navigate(SCREENS.MAIN)
+    } else {
+      // handle failure
+    }
+    this.setState({ loading: false })
+  }
 
   render() {
     const { showPassword } = this.state

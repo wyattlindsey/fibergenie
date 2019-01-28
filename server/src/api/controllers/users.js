@@ -12,13 +12,14 @@ export const create = (
   res: $Response,
   next: NextFunction
 ): void => {
-  const { email, name, password } = req.body
+  const { firstName, lastName, email, password } = req.body
 
   // todo check for pre-existing account with the same email
 
   userModel.create(
     {
-      name,
+      firstName,
+      lastName,
       email,
       password,
     },
@@ -27,7 +28,7 @@ export const create = (
         next(err)
         return
       }
-      res.json({
+      res.status(201).json({
         status: 'success',
         message: 'user creation successful',
         data: null,
