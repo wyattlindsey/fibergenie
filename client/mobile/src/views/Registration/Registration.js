@@ -8,6 +8,8 @@ import makeInputGreatAgain, {
   withNextInputAutoFocusForm,
   withNextInputAutoFocusInput,
 } from 'react-native-formik'
+import Toaster, { ToastStyles } from 'react-native-toaster'
+import { SecureStore } from 'expo'
 import { compose } from 'recompose'
 import * as Yup from 'yup'
 import _ from 'lodash'
@@ -37,12 +39,24 @@ const loginLinkStyle = {
   marginBottom: 32,
 }
 
+const emailExists = async email => {
+  try {
+    const res = await request.post('/users/check', { email })
+    const message = _.get(res, 'data.status', 'failure')
+    return message !== 'success'
+  } catch (e) {
+    console.error('Error checking email availability: ', e)
+  }
+  return true
+}
+
 const validationSchema = Yup.object().shape({
   firstName: Yup.string().required(),
   lastName: Yup.string().required(),
   email: Yup.string()
     .required()
-    .email('Please enter a valid email address'),
+    .email('Please enter a valid email address')
+    .test('Email available', 'Email in use', emailExists),
   password: Yup.string()
     .required()
     .min(8, 'Please choose a password at least 8 characters long'),
@@ -81,8 +95,12 @@ class Registration extends React.Component<void, State> {
     navigate({ key: SCREENS.LOGIN, routeName: SCREENS.LOGIN })
   }
 
-  handleSubmit = async (values: FormData ) => {
+  handleSubmit = async (values: FormData) => {
     this.setState({ loading: true })
+    const emailInUse = await emailExists()
+    if (emailInUse) {
+      // failure notification - email in use
+    }
     const res = await request.post('users/register', values)
     if (res.status !== 201) {
       // success

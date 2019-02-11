@@ -9,6 +9,7 @@ import makeInputGreatAgain, {
   withNextInputAutoFocusForm,
   withNextInputAutoFocusInput,
 } from 'react-native-formik'
+import Toaster, { ToastStyles } from 'react-native-toaster'
 import { compose } from 'recompose'
 import * as Yup from 'yup'
 import _ from 'lodash'
@@ -64,6 +65,12 @@ type Props = {
 type State = {
   loading: boolean,
   showPassword: boolean,
+  toasterMessage: ?ToasterMessage,
+}
+
+type ToasterMessage = {
+  text: string,
+  styles: $Values<ToastStyles>,
 }
 
 type FormData = {
@@ -75,6 +82,7 @@ class Login extends React.Component<Props, State> {
   state = {
     loading: false,
     showPassword: false,
+    toasterMessage: null,
   }
 
   static navigationOptions = {
@@ -94,22 +102,41 @@ class Login extends React.Component<Props, State> {
 
   handleSubmit = async (values: FormData) => {
     this.setState({ loading: true })
-    const res = await request.post('users/authenticate', values)
-    if (res.status === 200) {
+    let res
+    try {
+      res = await request.post('users/authenticate', values)
       const token = _.get(res, 'data.data.token')
-      await SecureStore.setItemAsync(CONFIG_KEYS.AUTH_TOKEN, token)
-      this.navigate(SCREENS.MAIN)
-    } else {
-      // handle failure
+      if (res.status === 200 && token) {
+        await SecureStore.setItemAsync(CONFIG_KEYS.AUTH_TOKEN, token)
+        this.navigate(SCREENS.MAIN)
+      }
+    } catch (e) {
+      if (res.status === 401) {
+        this.setState({
+          toasterMessage: {
+            text: 'Login failed. Please try again.',
+            styles: ToastStyles.error,
+          },
+        })
+      } else {
+        this.setState({
+          toasterMessage: {
+            text: `An error occurred during authentication: ${e}`,
+            styles: ToastStyles.error,
+          },
+        })
+      }
     }
+
     this.setState({ loading: false })
   }
 
   render() {
-    const { showPassword } = this.state
+    const { showPassword, toasterMessage } = this.state
 
     return (
       <View style={flexbox.center}>
+        <Toaster message={toasterMessage} style />
         <View style={registrationLinkStyle}>
           <Text>{REGISTRATION_TEXT}</Text>
           <Button onPress={this.handleRegistrationPress} title="Register" />

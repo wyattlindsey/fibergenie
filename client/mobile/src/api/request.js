@@ -3,6 +3,7 @@
 import Axios from 'axios'
 
 const post = async (path: string, payload: any, options = {}) => {
+  // todo validateStatus
   try {
     return await Axios.post(
       `http://localhost:3000/${path.replace(/^\//, '')}`, // todo hostname per environment

@@ -7,14 +7,40 @@ import userModel from 'api/models/users'
 
 import type { NextFunction, $Request, $Response } from 'express'
 
+export const check = async (
+  req: $Request,
+  res: $Response,
+  next: NextFunction
+): Promise<void> => {
+  const { email } = req.body
+
+  try {
+    const user = await userModel.findOne({ email })
+    if (user) {
+      res.json({
+        status: 'failure',
+        message: 'A user with this email already exists.',
+        data: null,
+      })
+    } else {
+      res.json({
+        status: 'success',
+        message: 'username available',
+        data: null,
+      })
+    }
+  } catch (e) {
+    console.error(e)
+    next(e)
+  }
+}
+
 export const create = (
   req: $Request,
   res: $Response,
   next: NextFunction
 ): void => {
   const { firstName, lastName, email, password } = req.body
-
-  // todo check for pre-existing account with the same email
 
   userModel.create(
     {
@@ -65,7 +91,7 @@ export const authenticate = (
           data: { token },
         })
       } else {
-        res.json({
+        res.status(404).json({
           status: 'error',
           message: 'authentication failed',
           data: null,
@@ -76,6 +102,7 @@ export const authenticate = (
 }
 
 export default {
+  check,
   create,
   authenticate,
 }
