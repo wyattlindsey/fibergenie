@@ -22,6 +22,7 @@ import FormInput from 'components/Form/Input'
 import flexbox from 'styles/flexbox'
 
 import SCREENS from 'constants/screens'
+import { CONFIG_KEYS } from 'constants'
 
 const Input = compose(
   handleTextInput,
@@ -64,10 +65,16 @@ const validationSchema = Yup.object().shape({
 
 const LOGIN_TEXT = 'Already have an account?'
 
+type ToasterMessage = {
+  text: string,
+  styles: $Values<ToastStyles>,
+}
+
 type State = {
   error: string | null,
   loading: boolean,
   showPassword: boolean,
+  toasterMessage: ?ToasterMessage,
 }
 
 type FormData = {
@@ -88,20 +95,61 @@ class Registration extends React.Component<void, State> {
     title: 'Registration',
   }
 
-  handleLoginPress = () => {
+  navigate(key: $Values<SCREENS>) {
     const {
       navigation: { navigate },
     } = this.props // eslint-disable-line react/prop-types
-    navigate({ key: SCREENS.LOGIN, routeName: SCREENS.LOGIN })
+    navigate({ key, routeName: key })
+  }
+
+  handleLoginPress = () => {
+    this.navigate(SCREENS.REGISTRATION)
+  }
+
+  async authenticate(email: string, password: string) {
+    this.setState({ loading: true })
+    let res
+    try {
+      res = await request.post('users/authenticate', { email, password })
+      const token = _.get(res, 'data.data.token')
+      if (res.status === 200 && token) {
+        await SecureStore.setItemAsync(CONFIG_KEYS.AUTH_TOKEN, token)
+        setTimeout(() => {
+          this.navigate(SCREENS.MAIN)
+        }, 250)
+      }
+    } catch (e) {
+      if (res.status === 401) {
+        this.setState({
+          toasterMessage: {
+            text: 'Login failed. Please try again.',
+            styles: ToastStyles.error,
+          },
+        })
+      } else {
+        this.setState({
+          toasterMessage: {
+            text: `An error occurred during authentication: ${e}`,
+            styles: ToastStyles.error,
+          },
+        })
+      }
+    }
+    this.setState({ loading: false })
   }
 
   handleSubmit = async (values: FormData) => {
     this.setState({ loading: true })
     const res = await request.post('users/register', values)
-    if (res.status !== 201) {
-      // success
+    if (res.status === 201) {
+      await this.authenticate(values.email, values.password)
     } else {
-      // failure notification
+      this.setState({
+        toasterMessage: {
+          text: `Account creation failed. ${_.get(res, 'data.message', '')}`,
+          styles: ToastStyles.error,
+        },
+      })
     }
     this.setState({ loading: false })
   }
