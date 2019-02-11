@@ -39,11 +39,11 @@ const loginLinkStyle = {
   marginBottom: 32,
 }
 
-const emailExists = async email => {
+const emailAvailable = async email => {
   try {
     const res = await request.post('/users/check', { email })
     const message = _.get(res, 'data.status', 'failure')
-    return message !== 'success'
+    return message === 'success'
   } catch (e) {
     console.error('Error checking email availability: ', e)
   }
@@ -56,7 +56,7 @@ const validationSchema = Yup.object().shape({
   email: Yup.string()
     .required()
     .email('Please enter a valid email address')
-    .test('Email available', 'Email in use', emailExists),
+    .test('Email available', 'Email in use', emailAvailable),
   password: Yup.string()
     .required()
     .min(8, 'Please choose a password at least 8 characters long'),
@@ -97,10 +97,6 @@ class Registration extends React.Component<void, State> {
 
   handleSubmit = async (values: FormData) => {
     this.setState({ loading: true })
-    const emailInUse = await emailExists()
-    if (emailInUse) {
-      // failure notification - email in use
-    }
     const res = await request.post('users/register', values)
     if (res.status !== 201) {
       // success
