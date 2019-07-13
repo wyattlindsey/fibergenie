@@ -11,7 +11,7 @@ const post = async (path: string, payload: any, options = {}) => {
       options
     )
   } catch (e) {
-    console.error('Error completing POST request: ', e)
+    console.warn('Error completing POST request')
   }
 }
 

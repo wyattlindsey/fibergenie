@@ -109,7 +109,7 @@ class Login extends React.Component<Props, State> {
       if (res && res.status === 200 && token) {
         await SecureStore.setItemAsync(CONFIG_KEYS.AUTH_TOKEN, token)
         this.navigate(SCREENS.MAIN)
-      } else if (!res || res.status === 401) {
+      } else if (!res || res.status !== 200) {
         this.setState({
           toasterMessage: {
             text: 'Login failed. Please try again.',
@@ -120,7 +120,7 @@ class Login extends React.Component<Props, State> {
     } catch (e) {
       this.setState({
         toasterMessage: {
-          text: `An error occurred during authentication: ${e}`,
+          text: 'An error occurred during authentication',
           styles: ToastStyles.error,
         },
       })
@@ -132,11 +132,13 @@ class Login extends React.Component<Props, State> {
   render() {
     const { showPassword, toasterMessage } = this.state
 
-    console.log('toasterMessage', toasterMessage)
-
     return (
       <View style={flexbox.center}>
-        <Toaster message={toasterMessage} style />
+        <Toaster
+          message={toasterMessage}
+          onShow={() => this.setState({ toasterMessage: null })}
+          style
+        />
         <View style={registrationLinkStyle}>
           <Text>{REGISTRATION_TEXT}</Text>
           <Button onPress={this.handleRegistrationPress} title="Register" />
