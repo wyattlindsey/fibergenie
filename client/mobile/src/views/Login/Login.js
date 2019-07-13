@@ -104,28 +104,26 @@ class Login extends React.Component<Props, State> {
     this.setState({ loading: true })
     let res
     try {
-      res = await request.post('users/authenticate', values)
+      res = await request.post('users/login', values)
       const token = _.get(res, 'data.data.token')
-      if (res.status === 200 && token) {
+      if (res && res.status === 200 && token) {
         await SecureStore.setItemAsync(CONFIG_KEYS.AUTH_TOKEN, token)
         this.navigate(SCREENS.MAIN)
-      }
-    } catch (e) {
-      if (res.status === 401) {
+      } else if (!res || res.status === 401) {
         this.setState({
           toasterMessage: {
             text: 'Login failed. Please try again.',
             styles: ToastStyles.error,
           },
         })
-      } else {
-        this.setState({
-          toasterMessage: {
-            text: `An error occurred during authentication: ${e}`,
-            styles: ToastStyles.error,
-          },
-        })
       }
+    } catch (e) {
+      this.setState({
+        toasterMessage: {
+          text: `An error occurred during authentication: ${e}`,
+          styles: ToastStyles.error,
+        },
+      })
     }
 
     this.setState({ loading: false })
@@ -133,6 +131,8 @@ class Login extends React.Component<Props, State> {
 
   render() {
     const { showPassword, toasterMessage } = this.state
+
+    console.log('toasterMessage', toasterMessage)
 
     return (
       <View style={flexbox.center}>

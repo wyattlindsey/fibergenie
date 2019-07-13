@@ -103,14 +103,14 @@ class Registration extends React.Component<void, State> {
   }
 
   handleLoginPress = () => {
-    this.navigate(SCREENS.REGISTRATION)
+    this.navigate(SCREENS.LOGIN)
   }
 
   async authenticate(email: string, password: string) {
     this.setState({ loading: true })
     let res
     try {
-      res = await request.post('users/authenticate', { email, password })
+      res = await request.post('users/login', { email, password })
       const token = _.get(res, 'data.data.token')
       if (res.status === 200 && token) {
         await SecureStore.setItemAsync(CONFIG_KEYS.AUTH_TOKEN, token)

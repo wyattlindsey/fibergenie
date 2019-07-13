@@ -63,7 +63,7 @@ export const create = (
   )
 }
 
-export const authenticate = (
+export const login = (
   req: $Request,
   res: $Response,
   next: NextFunction
@@ -75,9 +75,13 @@ export const authenticate = (
       email,
     },
     (err, userInfo) => {
-      if (err) {
-        next(err)
-        return
+      if (err || !userInfo) {
+        res.status(404).json({
+          status: 'error',
+          message: 'authentication failed',
+          data: null,
+        })
+        return next(err)
       }
 
       const { _id: id, password: userPassword } = userInfo
@@ -91,11 +95,14 @@ export const authenticate = (
           data: { token },
         })
       } else {
-        res.status(404).json({
-          status: 'error',
-          message: 'authentication failed',
-          data: null,
-        })
+        console.log('authentication failed!!!')
+        res.status(401).end('authentication failed')
+        // res.json({
+        //   status: 'error',
+        //   message: 'authentication failed',
+        //   data: null,
+        // })
+        return next(err)
       }
     }
   )
@@ -104,5 +111,5 @@ export const authenticate = (
 export default {
   check,
   create,
-  authenticate,
+  login,
 }
