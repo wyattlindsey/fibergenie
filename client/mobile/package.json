@@ -51,7 +51,7 @@
     "preset": "jest-expo"
   },
   "dependencies": {
-    "axios": "^0.18.0",
+    "axios": "^0.21.1",
     "cuid": "^2.1.4",
     "dot-prop": "^4.2.0",
     "expo": "^27.0.1",
